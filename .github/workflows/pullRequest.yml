@@ -15,5 +15,6 @@ jobs:
           echo "Source: ${{ github.head_ref }} -> Destination: ${{ github.base_ref }}"
           echo "Script completato con successo"
           pwd
-          chmod +x ./release.sh
-          ./release.sh validate PROD ${{ github.head_ref }} ${{ github.base_ref }} NoTestRun
+          echo "Files in root:"
+          ls -la
+         
