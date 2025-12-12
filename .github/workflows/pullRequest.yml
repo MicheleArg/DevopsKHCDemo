@@ -1,0 +1,19 @@
+name: Run Script on PR
+
+on:
+  pull_request:
+    types: [opened, reopened]
+
+jobs:
+  run-script:
+    runs-on: ubuntu-latest
+    
+    steps:      
+      - name: script
+        run: |
+          echo "Esecuzione script per PR #${{ github.event.pull_request.number }}"
+          echo "Source: ${{ github.head_ref }} -> Destination: ${{ github.base_ref }}"
+          ./path/to/your/script.sh "${{ github.head_ref }}" "${{ github.base_ref }}"
+          echo "Script completato con successo"
+          chmod +x ./release.sh
+          ./release.sh validate PROD ${{ github.head_ref }} ${{ github.event.pull_request.number }} NoTestRun
