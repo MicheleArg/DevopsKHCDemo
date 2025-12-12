@@ -14,12 +14,6 @@ jobs:
          with:
           fetch-depth: 0
           # Usa il token di default di GitHub (ha permessi per push tag)
-
-       - name: Upload all output
-         uses: actions/upload-artifact@v4
-         with:
-           name: all-output
-           path: .
           
        - name: script
          run: |
@@ -29,3 +23,9 @@ jobs:
            ls
            chmod +x ./release2.0.sh
            ./release2.0.sh validate PROD ${{ github.head_ref }} ${{ github.base_ref }} true
+
+       - name: Upload all output
+         uses: actions/upload-artifact@v4
+         with:
+           name: all-output
+           path: .
