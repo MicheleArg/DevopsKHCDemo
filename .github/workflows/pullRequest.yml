@@ -15,5 +15,5 @@ jobs:
           echo "Source: ${{ github.head_ref }} -> Destination: ${{ github.base_ref }}"
           echo "Script completato con successo"
           ls
-          chmod +x ./release.sh
-          ./release.sh validate PROD ${{ github.head_ref }} ${{ github.base_ref }} NoTestRun
+          chmod +x ./release2.0.sh
+          ./release2.0.sh validate PROD ${{ github.head_ref }} ${{ github.base_ref }} true
