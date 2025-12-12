@@ -8,17 +8,12 @@ jobs:
   run-script:
     runs-on: ubuntu-latest
     
-    steps:    
-      - name: Checkout repository
-        uses: actions/checkout@v4
-    
+    steps:      
       - name: script
         run: |
           echo "Esecuzione script per PR #${{ github.event.pull_request.number }}"
           echo "Source: ${{ github.head_ref }} -> Destination: ${{ github.base_ref }}"
           echo "Script completato con successo"
-          pwd
-          echo "Files in root:"
-          ls -la
-          chmod +x ./release.sh
-          ./release.sh validate PROD ${{ github.head_ref }} ${{ github.base_ref }} NoTestRun
+          ls
+          chmod +x ./release2.0.sh
+          ./release2.0.sh validate PROD ${{ github.head_ref }} ${{ github.base_ref }} true
