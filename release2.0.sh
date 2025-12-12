@@ -388,10 +388,13 @@ createDiffPackage(){
         # Salta righe vuote, con virgolette o non force-app
         [ -z "$line" ] && continue
         [[ "$line" == *"\""* ]] && echo "$line" >> "$error_file" && continue
-        [[ "$line" != *"force-app"* ]] && echo "$line" >> "$error_file" && continue
-        
+        # Se NON contiene "force-app" MA contiene "profilesDevOps", deve essere considerato profilo
+        if [[ "$line" != *"force-app"* ]] && [[ "$line" != *"profilesDevOps"* ]]; then
+            echo "$line" >> "$error_file"
+            continue
+        fi        
         # Determina il tipo di componente e gestiscilo
-        if [[ "$line" == *"/profiles/"* ]]; then
+        if [[ "$line" == *"profilesDevOps/"* ]]; then
             # PROFILES: leggi da profilesDevOps/
             if handleProfileFromExternal "$line" "$base_path" "$profiles_source" "$error_file"; then
                 ((success_count++))
