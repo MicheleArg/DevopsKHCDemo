@@ -14,6 +14,6 @@ jobs:
           echo "Esecuzione script per PR #${{ github.event.pull_request.number }}"
           echo "Source: ${{ github.head_ref }} -> Destination: ${{ github.base_ref }}"
           echo "Script completato con successo"
-          ls
+          pwd
           chmod +x ./release.sh
           ./release.sh validate PROD ${{ github.head_ref }} ${{ github.base_ref }} NoTestRun
