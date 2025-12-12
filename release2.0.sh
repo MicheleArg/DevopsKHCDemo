@@ -739,7 +739,6 @@ getCommitsFromTag(){
     echo "🔍 Recupero ultimo tag..."
     
     # Ottiene l'ultimo tag dalla funzione precedente
-    local ultimo_tag=$(getLastTag 2>/dev/null)
     
     if [ -z "$ultimo_tag" ]; then
         echo "⚠️  Nessun tag trovato - recupero tutte le commit"
