@@ -706,10 +706,10 @@ getLastTag(){
     # Estrai tagName dal JSON (usando jq se disponibile, altrimenti grep/sed)
     local tag_prefix
     if command -v jq >/dev/null 2>&1; then
-        tag_prefix=$(jq -r '.tagName' "$config_file")
+        tag_prefix=$(jq -r --arg env "$envTarget" '.[$env].tagName // empty' "$config_file")
     else
-        # Fallback senza jq
-        tag_prefix=$(grep -o '"tagName"[[:space:]]*:[[:space:]]*"[^"]*"' "$config_file" | sed 's/.*"tagName"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/')
+        # Fallback senza jq - cerca dentro l'ambiente specifico
+        tag_prefix=$(grep -A 10 "\"$envTarget\"" "$config_file" | grep -o '"tagName"[[:space:]]*:[[:space:]]*"[^"]*"' | sed 's/.*"tagName"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/' | head -1)
     fi
     
     # Verifica che tagName sia stato trovato
