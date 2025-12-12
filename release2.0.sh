@@ -739,29 +739,43 @@ getCommitsFromTag(){
     echo "🔍 Recupero ultimo tag..."
     
     # Ottiene l'ultimo tag dalla funzione precedente
+    local ultimo_tag=$(getLastTag 2>/dev/null)
     
-    
-    if [ $? -ne 0 ] || [ -z "$ultimo_tag" ]; then
-        echo "❌ Impossibile recuperare l'ultimo tag"
-        return 1
+    if [ -z "$ultimo_tag" ]; then
+        echo "⚠️  Nessun tag trovato - recupero tutte le commit"
+        
+        # Ottiene tutte le commit del branch corrente
+        local commits=$(git log --no-merges --pretty=format:"%h - %s")
+        
+        if [ -z "$commits" ]; then
+            echo "❌ Nessuna commit trovata nel repository"
+            return 1
+        fi
+        
+        # Salva tutte le commit
+        echo "$commits" > commits.txt
+        
+        local commit_count=$(echo "$commits" | wc -l)
+        echo "✅ $commit_count commit totali salvate in commits.txt"
+        
+    else
+        echo "📋 Cerco commit dopo il tag: $ultimo_tag"
+        
+        # Ottiene commit escludendo i merge
+        local commits=$(git log "$ultimo_tag..HEAD" --no-merges --pretty=format:"%h - %s")
+        
+        if [ -z "$commits" ]; then
+            echo "⚠️  Nessun commit trovato dopo il tag '$ultimo_tag'"
+            echo "Nessun commit dopo $ultimo_tag" > commits.txt
+            return 0
+        fi
+        
+        # Salva in commits.txt
+        echo "$commits" > commits.txt
+        
+        local commit_count=$(echo "$commits" | wc -l)
+        echo "✅ $commit_count commit salvati in commits.txt (da $ultimo_tag)"
     fi
-    
-    echo "📋 Cerco commit dopo il tag: $ultimo_tag"
-    
-    # Ottiene commit escludendo i merge
-    local commits=$(git log "$ultimo_tag..HEAD" --no-merges --pretty=format:"%h - %s")
-    
-    if [ -z "$commits" ]; then
-        echo "⚠️  Nessun commit trovato dopo il tag '$ultimo_tag'"
-        echo "Nessun commit dopo $ultimo_tag" > commits.txt
-        return 0
-    fi
-    
-    # Salva in commits.txt (sovrascrive il file)
-    echo "$commits" > commits.txt
-    
-    local commit_count=$(echo "$commits" | wc -l)
-    echo "✅ $commit_count commit salvati in commits.txt"
     
     # Mostra preview
     echo ""
