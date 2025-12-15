@@ -6,5 +6,5 @@
 	"pathKey" : "./DevOpsConfig/PROD/server.key",
     "tagName" : "PROD_"
  },
- "Release" : "R1" 
+ "Release" : "R2" 
 }
