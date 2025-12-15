@@ -366,7 +366,10 @@ createDiffPackage(){
     local base_path="./Release/"
     local error_file="${base_path}error.txt"
     local diff_file="diff.txt"
-    local profiles_source="./profilesDevOps/"
+    local config_file="DevOpsConfig/config.json"
+    local rer=$(jq -r --arg env "Release" '.[$env] // empty' "$config_file")
+
+    local profiles_source="./profilesDevOps/"$rel"/"
     
     echo "📦 Creazione package Salesforce..."
     
