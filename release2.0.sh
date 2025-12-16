@@ -333,6 +333,7 @@ createTestList(){
 }
 
 createReleasePackage(){
+    basePath="Release/"
     if [ -d "$basePath""codepkg" ]; then rm -Rf "$basePath""codepkg"; fi
 
     if sf project convert source -r "$basePath""force-app/main/default"  -d "$basePath""codepkg"; then :
