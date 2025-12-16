@@ -5,7 +5,7 @@
 	"url" : "https://login.salesforce.com",
 	"pathKey" : "./DevOpsConfig/PROD/server.key",
     "tagName" : "PROD_",
-    "server_key" : "./PROD/server.key"
+    "serverKey" : "./PROD/server.key"
  },
  "Release" : "R2" 
 }
