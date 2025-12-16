@@ -14,6 +14,12 @@ jobs:
          with:
           fetch-depth: 0
           # Usa il token di default di GitHub (ha permessi per push tag)
+
+       - name: Install Salesforce CLI
+         run: |
+           echo "📦 Installing Salesforce CLI..."
+           npm install -g @salesforce/cli
+           sf --version
           
        - name: script
          run: |
