@@ -574,37 +574,56 @@ handleProfileFromExternal(){
     local profiles_source="$3"
     local error_file="$4"
     
-    # Estrae il nome del file profile
+    echo "🔍 DEBUG Profile - file_path ricevuto: '$file_path'"
+    
+    # Pulisci eventuali spazi o caratteri speciali
+    file_path=$(echo "$file_path" | xargs)
+    
+    # Estrae il percorso relativo dopo profilesDevOps/
+    # Es: "profilesDevOps/R2/Admin.profile-meta.xml" -> "R2/Admin.profile-meta.xml"
+    local relative_path="${file_path#profilesDevOps/}"
     local profile_name=$(basename "$file_path")
+    echo "🔍 DEBUG Profile - relative_path: '$relative_path'"
+    echo "🔍 DEBUG Profile - profile_name: '$profile_name'"
     
     # Verifica esistenza cartella profilesDevOps
     if [ ! -d "$profiles_source" ]; then
-        echo "❌ Cartella $profiles_source non trovata" >> "$error_file"
+        echo "❌ Cartella $profiles_source non trovata!"
+        echo "   Path completo testato: $(pwd)/$profiles_source"
         echo "$file_path" >> "$error_file"
         return 1
     fi
     
-    # Cerca il profile in profilesDevOps/
-    local source_profile="${profiles_source}${profile_name}"
+    echo "✓ Cartella profilesDevOps trovata"
+    
+    # Usa il percorso relativo completo (include sottocartelle)
+    local source_profile="${profiles_source}${relative_path}"
+    echo "🔍 DEBUG Profile - source_profile: '$source_profile'"
     
     if [ ! -f "$source_profile" ]; then
-        echo "⚠️  Profile non trovato in profilesDevOps: $profile_name" >> "$error_file"
+        echo "❌ Profile non trovato: $source_profile"
+        echo "   File cercati in $profiles_source:"
+        ls -la "$profiles_source" 2>/dev/null | head -5
         echo "$file_path" >> "$error_file"
         return 1
     fi
+    
+    echo "✓ File sorgente trovato: $source_profile"
     
     # Crea struttura force-app/main/default/profiles/ nel package
     local profile_dest_dir="${base_path}force-app/main/default/profiles"
     mkdir -p "$profile_dest_dir"
+    echo "✓ Directory destinazione creata: $profile_dest_dir"
     
     # Copia profile da profilesDevOps/ a Release/force-app/main/default/profiles/
-    if cp "$source_profile" "$profile_dest_dir/"; then
-        echo "👤 Profile: $profile_name"
+    if cp -v "$source_profile" "$profile_dest_dir/"; then
+        echo "✅ Profile copiato: $profile_name → $profile_dest_dir/"
         
         # Copia anche il meta.xml se esiste
         local meta_file="${source_profile}-meta.xml"
         if [ -f "$meta_file" ]; then
-            cp "$meta_file" "$profile_dest_dir/"
+            cp -v "$meta_file" "$profile_dest_dir/"
+            echo "   + meta.xml copiato"
         fi
         
         return 0
