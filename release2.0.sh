@@ -306,30 +306,93 @@ validate(){
 }
 
 createTestList(){
-    # Nome del file JSON
-    JSON_FILE="test-catalog.json"
-
-    test_list="";
-
-    # Usa jq per estrarre le chiavi e i valori
-    map=$(jq -r 'to_entries | .[] | "\(.key)=\(.value)"' "$JSON_FILE")
-
-    # Dichiarare un array associativo in Bash
-    declare -A kv_map
-
-    # Popola l'array associativo
-    while IFS="=" read -r key value; do
-        kv_map["$key"]="$value"
-    done <<< "$map"
-
-    # Stampa la mappa di coppie chiave-valore
-    for key in "${!kv_map[@]}"; do 
-        if [[ -z "$test_list" ]]; then
-            test_list="${kv_map[$key]}"
+    local package_path="./Release/force-app/main/default/classes"
+    local json_file="test-catalog.json"
+    local test_list=""
+    
+    echo "🧪 Creazione lista test da eseguire..."
+    
+    # Verifica esistenza file JSON
+    if [ ! -f "$json_file" ]; then
+        echo "❌ File $json_file non trovato"
+        return 1
+    fi
+    
+    # Verifica esistenza cartella classes
+    if [ ! -d "$package_path" ]; then
+        echo "⚠️  Nessuna cartella classes trovata in $package_path"
+        echo "   Nessun test da eseguire."
+        return 0
+    fi
+    
+    # Estrae il test di default
+    local default_test=$(jq -r '.default // empty' "$json_file")
+    echo "📋 Test di default: ${default_test:-"nessuno"}"
+    
+    # Array per evitare duplicati
+    declare -A test_set
+    local class_count=0
+    local test_count=0
+    
+    echo ""
+    echo "📦 Scansione classi nel package..."
+    
+    # Trova tutti i file .cls nel package
+    while IFS= read -r class_file; do
+        # Estrae il nome della classe (senza percorso e senza estensione)
+        local class_name=$(basename "$class_file" .cls)
+        
+        # Salta i file -meta.xml
+        [[ "$class_name" == *"-meta" ]] && continue
+        
+        ((class_count++))
+        echo "  📄 Classe trovata: $class_name"
+        
+        # Cerca il test corrispondente nel JSON
+        local test_class=$(jq -r --arg class "$class_name" '.[$class] // empty' "$json_file")
+        
+        if [ -n "$test_class" ]; then
+            # Test specifico trovato
+            echo "     ✓ Test specifico: $test_class"
+            test_set["$test_class"]=1
+        elif [ -n "$default_test" ]; then
+            # Usa il test di default
+            echo "     ⚙️  Usa test default: $default_test"
+            test_set["$default_test"]=1
         else
-            test_list+=" ${kv_map[$key]}"
+            echo "     ⚠️  Nessun test configurato"
         fi
+        
+    done < <(find "$package_path" -name "*.cls" -type f)
+    
+    # Costruisce la lista dei test (senza duplicati)
+    for test in "${!test_set[@]}"; do
+        if [[ -z "$test_list" ]]; then
+            test_list="$test"
+        else
+            test_list="$test_list $test"
+        fi
+        ((test_count++))
     done
+    
+    echo ""
+    echo "📊 Riepilogo:"
+    echo "   Classi trovate: $class_count"
+    echo "   Test da eseguire: $test_count"
+    echo ""
+    
+    if [ -n "$test_list" ]; then
+        echo "✅ Lista test generata:"
+        echo "   $test_list"
+        echo ""
+        echo "🚀 Comando per eseguire i test:"
+        echo "   sf apex run test --tests $test_list --result-format human --code-coverage --wait 10"
+    else
+        echo "⚠️  Nessun test da eseguire"
+    fi
+    
+    # Esporta la variabile per usarla fuori dalla funzione
+    echo "$test_list"
 }
 
 createReleasePackage(){
