@@ -266,6 +266,7 @@ validate(){
     
     if [ "$testToRun" == 'true' ]; then
         # Con test specificati
+        test_list=""
         createTestList
         
         if [ -z "$test_list" ]; then
@@ -308,7 +309,6 @@ validate(){
 createTestList(){
     local package_path="./Release/force-app/main/default/classes"
     local json_file="test-catalog.json"
-    local test_list=""
     local default_test=$(jq -r '.default // empty' "$json_file")
     echo "📋 Test di default: ${default_test:-"nessuno"}"
     
