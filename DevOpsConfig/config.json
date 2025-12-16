@@ -4,7 +4,8 @@
 	"username" : "michele11.argentino931@agentforce.com",
 	"url" : "https://login.salesforce.com",
 	"pathKey" : "./DevOpsConfig/PROD/server.key",
-    "tagName" : "PROD_"
+    "tagName" : "PROD_",
+    "server_key" : "./PROD/server.key"
  },
  "Release" : "R2" 
 }
