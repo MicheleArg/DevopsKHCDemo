@@ -309,6 +309,8 @@ createTestList(){
     local package_path="./Release/force-app/main/default/classes"
     local json_file="test-catalog.json"
     local test_list=""
+    local default_test=$(jq -r '.default // empty' "$json_file")
+    echo "📋 Test di default: ${default_test:-"nessuno"}"
     
     echo "🧪 Creazione lista test da eseguire..."
     
@@ -318,19 +320,24 @@ createTestList(){
         return 1
     fi
     
+    declare -A test_set
+
     # Verifica esistenza cartella classes
     if [ ! -d "$package_path" ]; then
         echo "⚠️  Nessuna cartella classes trovata in $package_path"
-        echo "   Nessun test da eseguire."
+
+        if [ -n "$default_test" ]; then
+            echo "⚙️  Uso test di default dal catalogo: $default_test"
+            echo "$default_test"
+            test_set["$default_test"]=1
+        else
+            echo "⚠️  Nessun test di default configurato"
+        fi
+
         return 0
     fi
     
-    # Estrae il test di default
-    local default_test=$(jq -r '.default // empty' "$json_file")
-    echo "📋 Test di default: ${default_test:-"nessuno"}"
-    
     # Array per evitare duplicati
-    declare -A test_set
     local class_count=0
     local test_count=0
     
@@ -355,10 +362,6 @@ createTestList(){
             # Test specifico trovato
             echo "     ✓ Test specifico: $test_class"
             test_set["$test_class"]=1
-        elif [ -n "$default_test" ]; then
-            # Usa il test di default
-            echo "     ⚙️  Usa test default: $default_test"
-            test_set["$default_test"]=1
         else
             echo "     ⚠️  Nessun test configurato"
         fi
