@@ -4,5 +4,5 @@
        <editable>false</editable>
        <field>Case.CaseNumber</field>
        <readable>true</readable>
-    </fieldPermissions>
+    </fieldPermissions> 
 </Profile>
