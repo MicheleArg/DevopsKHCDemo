@@ -151,25 +151,6 @@ pullRequestCreation(){
     createPR
 }
 
-createPR(){
-    # Variabili
-    project_id="52169979"
-    source_branch=$sourceBranch
-    target_branch=$destBranch
-    title="PullRequesr"
-
-    # Token di accesso personale (PAT)
-    token="glpat-RegHWuw6cefvHfVrWJRx"
-
-    # API endpoint per creare una pull request
-    url="https://gitlab.com/api/v4/projects/$project_id/merge_requests"
-
-    # Payload della richiesta
-    data="source_branch=$source_branch&target_branch=$target_branch&title=$title"
-
-    # Creazione della pull request
-    curl -X POST -H "PRIVATE-TOKEN: $token" -d "$data" $url
-}
 
 cretaDeployScript(){
     echo '' > deploy.xml
@@ -225,10 +206,10 @@ validate(){
     local client_id username server_key instance_url
     
     if command -v jq >/dev/null 2>&1; then
-        client_id=$(jq -r '.clientId // .client_id // empty' "$config_file")
-        username=$(jq -r '.username // empty' "$config_file")
-        server_key=$(jq -r '.serverKey // .server_key // empty' "$config_file")
-        instance_url=$(jq -r '.instanceUrl // .instance_url // "https://login.salesforce.com"' "$config_file")
+        client_id=$(jq -r --arg env "$envTarget" '.[$env].clientId // empty' "$config_file")
+        username=$(jq -r --arg env "$envTarget" '.[$env].username // empty' "$config_file")
+        server_key=$(jq -r --arg env "$envTarget" '.[$env].serverKey // empty' "$config_file")
+        instance_url=$(jq -r --arg env "$envTarget" '.[$env].instanceUrl // empty' "$config_file")
     else
         client_id=$(grep -oP '"(clientId|client_id)"\s*:\s*"\K[^"]+' "$config_file" | head -1)
         username=$(grep -oP '"username"\s*:\s*"\K[^"]+' "$config_file")
