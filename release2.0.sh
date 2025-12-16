@@ -367,7 +367,7 @@ createDiffPackage(){
     local error_file="${base_path}error.txt"
     local diff_file="diff.txt"
     local config_file="DevOpsConfig/config.json"
-    local rer=$(jq -r --arg env "Release" '.[$env] // empty' "$config_file")
+    local rer=$(jq -r '.["Release"] // empty' "$config_file")
 
     local profiles_source="./profilesDevOps/"$rel"/"
     
