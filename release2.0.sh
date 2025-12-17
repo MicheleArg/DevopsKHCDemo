@@ -223,10 +223,16 @@ validateDeploy(){
 
     createReleasePackage
 
-    validate
+     if ! validate; then
+        echo "❌ Errore nella validate"
+        cleanupMergeBranch
+        exit 1
+    fi
 
      # Pulizia branch temporaneo
     cleanupMergeBranch
+
+   
 }
 
 
@@ -366,7 +372,7 @@ validate(){
                 echo "Coverage: $coverage%"
                 if (( $(echo "$coverage < 80" | bc -l) )); then
                     echo "❌ Coverage sotto 80%!"
-                    exit 1
+                    return 1
                 else
                     echo "✅ Coverage OK"
                 fi
