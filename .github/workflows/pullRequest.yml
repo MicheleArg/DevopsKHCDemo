@@ -38,7 +38,43 @@ jobs:
            ls
            chmod +x ./release2.0.sh
            ./release2.0.sh validate ${{ github.head_ref }} ${{ github.base_ref }} true
+       
+       - name: Set up Java
+         uses: actions/setup-java@v3
+         with:
+          distribution: temurin
+          java-version: '17'
 
+      # --- Download PMD ---
+       - name: Download PMD
+         run: |
+          wget https://github.com/pmd/pmd/releases/download/pmd_releases%2F6.64.0/pmd-bin-6.64.0.zip
+          unzip pmd-bin-6.64.0.zip
+          echo "$PWD/pmd-bin-6.64.0/bin" >> $GITHUB_PATH
+
+      # --- Run PMD analysis ---
+       - name: Run PMD on Apex
+         run: |
+          mkdir -p ./Release/pmd
+          pmd -d ./Release/force-app/main/default/classes -R rulesets/apex/quickstart.xml -f html -r ./Release/pmd/pmd-report.html || true
+
+      # --- Upload PMD report as artifact ---
+       - name: Upload PMD report
+         uses: actions/upload-artifact@v3
+         with:
+          name: PMD-report
+          path: ./Release/pmd/pmd-report.html
+
+      # --- Fail on PMD violations ---
+       - name: Fail if PMD violations
+         run: |
+          if grep -q "<violation" ./Release/pmd/pmd-report.html; then
+            echo "PMD violations found. See report in artifacts."
+            exit 1
+          else
+            echo "No PMD violations"
+          fi
+          
        - name: Upload artifact
          if: always()
          uses: actions/upload-artifact@v4
