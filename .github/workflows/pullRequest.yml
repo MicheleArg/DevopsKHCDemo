@@ -24,6 +24,7 @@ jobs:
            echo "📦 Installing Salesforce CLI..."
            npm install -g @salesforce/cli
            sf --version
+           sf plugins install @salesforce/sfdx-scanner
 
        - name: Configure git identity
          run: |
