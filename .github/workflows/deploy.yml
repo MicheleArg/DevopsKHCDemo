@@ -23,6 +23,11 @@ jobs:
           echo "📦 Installing Salesforce CLI..."
           npm install -g @salesforce/cli
           sf --version
+
+      - name: Configure git identity
+        run: |
+          git config --global user.name "Automation"
+          git config --global user.email "automation@github.com"
           
       - name: Deploy
         run: |
