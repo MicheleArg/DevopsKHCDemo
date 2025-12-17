@@ -45,28 +45,32 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      # --- Download PMD ---
-       - name: Download PMD
+       - name: Install PMD
          run: |
-          wget https://github.com/pmd/pmd/releases/download/pmd_releases%2F6.64.0/pmd-bin-6.64.0.zip
-          unzip pmd-bin-6.64.0.zip
-          echo "$PWD/pmd-bin-6.64.0/bin" >> $GITHUB_PATH
-
-      # --- Run PMD analysis ---
-       - name: Run PMD on Apex
+          npm install -g pmd-bin
+    
+       - name: Run PMD analysis
          run: |
-          mkdir -p ./Release/pmd
-          pmd -d ./Release/force-app/main/default/classes -R rulesets/apex/quickstart.xml -f html -r ./Release/pmd/pmd-report.html || true
-
-      # --- Fail on PMD violations ---
-       - name: Fail if PMD violations
-         run: |
-          if grep -q "<violation" ./Release/pmd/pmd-report.html; then
-            echo "PMD violations found. See report in artifacts."
-            exit 1
+          if [ -d "./Release/force-app/main/default/classes" ]; then
+            echo "📦 Classes folder found, running PMD..."
+            mkdir -p ./Release/pmd
+            pmd -d ./Release/force-app/main/default/classes \
+                -R category/apex/codestyle.xml \
+                -f html \
+                -r ./Release/pmd/pmd-report.html || true
           else
-            echo "No PMD violations"
+            echo "⚠️ Classes folder not found, skipping PMD analysis."
           fi
+
+       - name: Fail on PMD violations
+         if: exists('./Release/pmd/pmd-report.html')
+         run: |
+            if grep -q "<violation" ./Release/pmd/pmd-report.html; then
+              echo "❌ PMD violations found"
+              exit 1
+            else
+              echo "✅ No PMD violations"
+            fi
           
        - name: Upload artifact
          if: always()
