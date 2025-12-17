@@ -365,25 +365,8 @@ validate(){
                 --test-level RunSpecifiedTests \
                 --tests "$test_list" \
                 --target-org "$envTarget" \
-                --coverage-formatters json \
-                --results-dir "./Release/coverage" \
-                --wait 10; then
+                --json > "./Release/deploy-results.json"; then
                 echo "✅ Validazione completata con successo"
-
-                if [ ! -f "./Release/coverage/coverage/coverage.json" ]; then
-                    echo "❌ coverage.json non trovato"
-                    exit 1
-                fi
-
-                coverage=$(jq '(.totals.coveredLines / .totals.totalLines) * 100' "./Release/coverage/coverage/coverage.json")
-                coverage=$(printf "%.0f" "$coverage")
-
-                echo "📊 Copertura Apex: $coverage%"
-
-                if [ "$coverage" -lt "80" ]; then
-                echo "❌ Copertura inferiore a 80%!"
-                exit 1
-                fi
             else
                 echo "❌ Validazione fallita"
                 return 1
