@@ -964,10 +964,10 @@ getCommitsFromTag(){
 export LANG=en_us_8859_1
 
 actionType=$1
-envTarget=$2
-sourceBranch=$3
-destBranch=$4
-testToRun=$5
+envTarget=$(jq -r --arg env "$3" '.[$env] // empty' "$config_file")
+sourceBranch=$2
+destBranch=$3
+testToRun=$4
 
 checkAction
 

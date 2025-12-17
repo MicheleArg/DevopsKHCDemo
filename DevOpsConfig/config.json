@@ -7,5 +7,7 @@
     "tagName" : "PROD_",
     "instanceUrl" : "https://login.salesforce.com"
  },
- "Release" : "R2" 
+ "Release" : "R2",
+ "main" : "PROD",
+ "UAT" : "UAT" 
 }
