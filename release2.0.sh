@@ -364,17 +364,25 @@ validate(){
                 --source-dir "./Release/force-app/main/default" \
                 --test-level RunSpecifiedTests \
                 --tests "$test_list" \
-                --target-org "$envTarget"; then
+                --target-org "$envTarget" \
+                --coverage-formatters json \
+                --results-dir "./Release/coverage" \
+                --wait 10; then
                 echo "✅ Validazione completata con successo"
 
-                sf apex run test --tests "$test_list" --target-org "$envTarget"  >  "./Release/test-results.json"
-                coverage=$(jq -r '.result.coverage.summary.orgWideCoverage' "./Release/test-results.json" | tr -d '%')
-                echo "Coverage: $coverage"
-                if (( $(echo "$coverage < 80" | bc -l) )); then
-                    echo "❌ Coverage sotto 80%!"
-                    return 1
-                else
-                    echo "✅ Coverage OK"
+                if [ ! -f "./Release/coverage/coverage/coverage.json" ]; then
+                    echo "❌ coverage.json non trovato"
+                    exit 1
+                fi
+
+                coverage=$(jq '(.totals.coveredLines / .totals.totalLines) * 100' "./Release/coverage/coverage/coverage.json")
+                coverage=$(printf "%.0f" "$coverage")
+
+                echo "📊 Copertura Apex: $coverage%"
+
+                if [ "$coverage" -lt "80" ]; then
+                echo "❌ Copertura inferiore a 80%!"
+                exit 1
                 fi
             else
                 echo "❌ Validazione fallita"
