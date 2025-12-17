@@ -26,5 +26,7 @@ private class KHC_CaseClassTest {
     static void myUnitTest() {
         KHC_CaseClass test = new KHC_CaseClass();
         KHC_CaseClass.test1();
+        KHC_CaseClass.test2();
+        KHC_CaseClass.test3();
     }
 }
