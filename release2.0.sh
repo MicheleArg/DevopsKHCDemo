@@ -894,8 +894,12 @@ getLastTag(){
     
     # Checkout del branch di destinazione
     echo "🔀 Checkout del branch destinazione: $destBranch"
-    if ! git checkout "$destBranch" 2>/dev/null; then
-        echo "❌ Errore nel checkout di $destBranch"
+    if git show-ref --verify --quiet "refs/heads/$destBranch"; then
+        git checkout "$destBranch"
+    elif git show-ref --verify --quiet "refs/remotes/origin/$destBranch"; then
+        git checkout -B "$destBranch" "origin/$destBranch"
+    else
+        echo "❌ Branch '$destBranch' non trovato né localmente né su origin"
         return 1
     fi
     
@@ -940,8 +944,12 @@ createMergeBranch(){
     
     # Checkout del branch di destinazione
     echo "🔀 Checkout branch destinazione: $destBranch"
-    if ! git checkout "$destBranch" 2>/dev/null; then
-        echo "❌ Errore nel checkout di $destBranch"
+   if git show-ref --verify --quiet "refs/heads/$destBranch"; then
+        git checkout "$destBranch"
+    elif git show-ref --verify --quiet "refs/remotes/origin/$destBranch"; then
+        git checkout -B "$destBranch" "origin/$destBranch"
+    else
+        echo "❌ Branch '$destBranch' non trovato né localmente né su origin"
         return 1
     fi
     
