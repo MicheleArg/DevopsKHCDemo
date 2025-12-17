@@ -402,7 +402,23 @@ createReleasePackage(){
     basePath="Release/"
     if [ -d "$basePath""codepkg" ]; then rm -Rf "$basePath""codepkg"; fi
 
-    if sf project convert source -r "$basePath""force-app/main/default"  -d "$basePath""codepkg"; then :
+    if sf project convert source -r "$basePath""force-app/main/default"  -d "$basePath""codepkg"; then 
+        echo "✅ Conversione completata"
+    
+        # Se esiste la cartella profiles in default, sostituiscila in codepkg
+        if [ -d "$basePath""default/profiles" ]; then
+            echo "📁 Trovata cartella profiles in default"
+            
+            # Rimuovi la cartella profiles generata in codepkg
+            rm -rf "$basePath""codepkg/profiles"
+            
+            # Copia la cartella profiles da default a codepkg
+            cp -r "$basePath""default/profiles" "$basePath""codepkg/"
+            
+            echo "✅ Cartella profiles sostituita in codepkg"
+        else
+            echo "⚠️  Nessuna cartella profiles trovata in default"
+        fi
     else 
         echo "[Error] Error converting to mdapi..."
         echo "[Error] Source path: ""$basePath""force-app/main/default"
