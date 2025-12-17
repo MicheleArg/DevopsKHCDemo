@@ -65,7 +65,8 @@ jobs:
                 echo "📄 PMD text report:"
                 pmd -d ./Release/force-app/main/default/classes \
                     -R category/apex/codestyle.xml \
-                    -f text || true
+                    -f text \
+                    -debug
           else
             echo "⚠️ Classes folder not found, skipping PMD analysis."
           fi
