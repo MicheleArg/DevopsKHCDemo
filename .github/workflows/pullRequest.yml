@@ -28,7 +28,7 @@ jobs:
            echo "Script completato con successo"
            ls
            chmod +x ./release2.0.sh
-           ./release2.0.sh validate PROD ${{ github.head_ref }} ${{ github.base_ref }} true
+           ./release2.0.sh validate ${{ github.head_ref }} ${{ github.base_ref }} true
 
        - name: Upload all output
          if: always()
