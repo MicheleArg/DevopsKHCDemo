@@ -58,13 +58,6 @@ jobs:
           mkdir -p ./Release/pmd
           pmd -d ./Release/force-app/main/default/classes -R rulesets/apex/quickstart.xml -f html -r ./Release/pmd/pmd-report.html || true
 
-      # --- Upload PMD report as artifact ---
-       - name: Upload PMD report
-         uses: actions/upload-artifact@v3
-         with:
-          name: PMD-report
-          path: ./Release/pmd/pmd-report.html
-
       # --- Fail on PMD violations ---
        - name: Fail if PMD violations
          run: |
