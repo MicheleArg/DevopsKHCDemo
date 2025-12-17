@@ -1155,7 +1155,7 @@ runPMD(){
         pmd_threshold=$(jq -r '.pmdConfig.failOnViolations // "false"' "$config_file")
     else
         pmd_enabled="true"
-        pmd_ruleset="category/apex/design.xml,category/apex/bestpractices.xml"
+        pmd_ruleset="category/apex/design.xml,category/apex/bestpractices.xml,category/apex/errorprone.xml,category/apex/performance.xml,category/apex/security.xml"
         pmd_threshold="false"
     fi
     
@@ -1164,303 +1164,114 @@ runPMD(){
         return 0
     fi
     
-    echo "📋 Configurazione PMD:"
-    echo "   - Ruleset: $pmd_ruleset"
-    echo "   - Fail on violations: $pmd_threshold"
-    echo ""
-    
-    # Verifica quale tool è disponibile: sf scanner o pmd
-    if command -v sf >/dev/null 2>&1 && sf scanner --help >/dev/null 2>&1; then
-        echo "🔧 Utilizzo Salesforce Scanner (sf scanner)..."
-        runSalesforceScanner "$source_path" "$report_path" "$pmd_ruleset" "$pmd_threshold"
-    elif command -v pmd >/dev/null 2>&1; then
-        echo "🔧 Utilizzo PMD diretto..."
-        runPMDDirect "$source_path" "$report_path" "$pmd_ruleset" "$pmd_threshold"
-    else
-        echo "❌ Né 'sf scanner' né 'pmd' sono installati"
-        echo "   Installa uno dei due tool:"
-        echo "   - Salesforce Scanner: sf plugins install @salesforce/sfdx-scanner"
-        echo "   - PMD: https://pmd.github.io/"
+    # Verifica che Code Analyzer sia installato
+    if ! sf code-analyzer run --help >/dev/null 2>&1; then
+        echo "❌ Salesforce Code Analyzer non installato"
+        echo ""
+        echo "💡 Installa con:"
+        echo "   sf plugins install @salesforce/plugin-code-analyzer"
+        echo ""
         return 1
     fi
-}
-
-runSalesforceScanner(){
-    local source_path="$1"
-    local report_path="$2"
-    local ruleset="$3"
-    local fail_on_violations="$4"
     
-    echo "🚀 Esecuzione Salesforce Code Analyzer..."
-    
-    # Trova tutti i file da analizzare
+    # Trova file da analizzare
     local target_files=""
+    [ -d "$source_path/classes" ] && target_files="$source_path/classes"
     
-    # Aggiungi classi se esistono
-    if [ -d "$source_path/classes" ] && [ "$(ls -A $source_path/classes/*.cls 2>/dev/null)" ]; then
-        target_files="$source_path/classes"
-    fi
-    
-    # Aggiungi triggers se esistono
-    if [ -d "$source_path/triggers" ] && [ "$(ls -A $source_path/triggers/*.trigger 2>/dev/null)" ]; then
-        if [ -n "$target_files" ]; then
-            target_files="$target_files,$source_path/triggers"
-        else
-            target_files="$source_path/triggers"
-        fi
+    if [ -d "$source_path/triggers" ]; then
+        [ -n "$target_files" ] && target_files="$target_files,$source_path/triggers" || target_files="$source_path/triggers"
     fi
     
     if [ -z "$target_files" ]; then
-        echo "⚠️  Nessun file Apex/Trigger trovato da analizzare"
+        echo "⚠️  Nessun file Apex/Trigger da analizzare"
         return 0
     fi
     
-    echo "📂 Target files: $target_files"
+    # Prepara categorie PMD
+    local pmd_categories=$(echo "$pmd_ruleset" | sed 's/category\/apex\///g' | sed 's/\.xml//g' | tr ',' ' ')
     
-    # Prepara le categorie PMD
-    local pmd_categories=""
-    if [ -n "$ruleset" ]; then
-        pmd_categories=$(echo "$ruleset" | sed 's/category\/apex\///g' | sed 's/\.xml//g' | tr ',' ' ')
-    else
-        pmd_categories="design bestpractices errorprone performance security"
-    fi
-    
-    echo "📋 PMD Categories: $pmd_categories"
+    echo "📂 Target: $target_files"
+    echo "📋 Categories: $pmd_categories"
+    echo "⚙️  Fail on violations: $pmd_threshold"
     echo ""
     
-    # Determina quale versione usare (v5.x nuova, v4.x legacy)
-    local use_v5=false
-    if sf code-analyzer --help >/dev/null 2>&1; then
-        use_v5=true
-        echo "✅ Utilizzo Code Analyzer v5.x (nuova versione)"
-    elif sf scanner --help >/dev/null 2>&1; then
-        echo "⚠️  Utilizzo Code Analyzer v4.x (legacy - aggiorna a v5.x)"
-    else
-        echo "❌ Code Analyzer non installato"
-        return 1
-    fi
+    # Genera report JSON
+    echo "📊 Generazione report JSON..."
+    sf code-analyzer run \
+        --target "$target_files" \
+        --format json \
+        --outfile "$report_path/scanner-report.json" \
+        --engine pmd \
+        --pmd-config pmdCategories="$pmd_categories" \
+        --normalize-severity \
+        >/dev/null 2>&1
     
+    # Genera report HTML
+    echo "📊 Generazione report HTML..."
+    sf code-analyzer run \
+        --target "$target_files" \
+        --format html \
+        --outfile "$report_path/scanner-report.html" \
+        --engine pmd \
+        --pmd-config pmdCategories="$pmd_categories" \
+        --normalize-severity \
+        >/dev/null 2>&1
+    
+    # Mostra risultati a console
     echo ""
+    echo "📋 Risultati analisi:"
+    sf code-analyzer run \
+        --target "$target_files" \
+        --format table \
+        --engine pmd \
+        --pmd-config pmdCategories="$pmd_categories" \
+        --normalize-severity
     
-    if [ "$use_v5" = true ]; then
-        # ========== VERSIONE 5.x (NUOVA) ==========
-        
-        # Esegui per JSON
-        echo "📊 Generazione report JSON (v5)..."
-        sf code-analyzer run \
-            --target "$target_files" \
-            --format json \
-            --outfile "$report_path/scanner-report.json" \
-            --engine pmd \
-            --pmd-config pmdCategories="$pmd_categories" \
-            --normalize-severity
-        
-        local exit_code=$?
-        
-        # Esegui per HTML
-        echo "📊 Generazione report HTML (v5)..."
-        sf code-analyzer run \
-            --target "$target_files" \
-            --format html \
-            --outfile "$report_path/scanner-report.html" \
-            --engine pmd \
-            --pmd-config pmdCategories="$pmd_categories" \
-            --normalize-severity \
-            >/dev/null 2>&1
-        
-        # Esegui per output console
-        echo ""
-        echo "📋 Risultati analisi:"
-        sf code-analyzer run \
-            --target "$target_files" \
-            --format table \
-            --engine pmd \
-            --pmd-config pmdCategories="$pmd_categories" \
-            --normalize-severity
-    else
-        # ========== VERSIONE 4.x (LEGACY) ==========
-        
-        # Esegui per JSON
-        echo "📊 Generazione report JSON (v4 - legacy)..."
-        sf scanner run \
-            --target "$target_files" \
-            --format json \
-            --outfile "$report_path/scanner-report.json" \
-            --category $pmd_categories \
-            --normalize-severity
-        
-        local exit_code=$?
-        
-        # Esegui per HTML
-        echo "📊 Generazione report HTML (v4 - legacy)..."
-        sf scanner run \
-            --target "$target_files" \
-            --format html \
-            --outfile "$report_path/scanner-report.html" \
-            --category $pmd_categories \
-            --normalize-severity \
-            >/dev/null 2>&1
-        
-        # Esegui per output console
-        echo ""
-        echo "📋 Risultati analisi:"
-        sf scanner run \
-            --target "$target_files" \
-            --format table \
-            --category $pmd_categories \
-            --normalize-severity
-    fi
-    
-    echo ""
-    
-    # Controlla se ci sono violazioni reali nel JSON
-    local has_violations=0
+    # Conta violazioni
     local total_violations=0
-    
-    if [ -f "$report_path/scanner-report.json" ]; then
-        # Conta le violazioni dal JSON
-        if command -v jq >/dev/null 2>&1; then
-            total_violations=$(jq '[.[] | select(.violations != null) | .violations[]] | length' "$report_path/scanner-report.json" 2>/dev/null || echo "0")
-            [ "$total_violations" -gt 0 ] && has_violations=1
-        else
-            # Fallback: controlla se il JSON contiene "violations"
-            if grep -q '"violations"' "$report_path/scanner-report.json" 2>/dev/null; then
-                has_violations=1
-                total_violations="N/A"
-            fi
+    if [ -f "$report_path/scanner-report.json" ] && command -v jq >/dev/null 2>&1; then
+        total_violations=$(jq '[.[] | select(.violations != null) | .violations[]] | length' "$report_path/scanner-report.json" 2>/dev/null || echo "0")
+        
+        # Mostra summary
+        echo ""
+        echo "📈 Riepilogo violazioni:"
+        
+        local sev1=$(jq '[.[] | select(.severity == 1)] | length' "$report_path/scanner-report.json" 2>/dev/null || echo "0")
+        local sev2=$(jq '[.[] | select(.severity == 2)] | length' "$report_path/scanner-report.json" 2>/dev/null || echo "0")
+        local sev3=$(jq '[.[] | select(.severity == 3)] | length' "$report_path/scanner-report.json" 2>/dev/null || echo "0")
+        
+        echo "   🔴 High (Severity 1): $sev1"
+        echo "   🟡 Medium (Severity 2): $sev2"
+        echo "   🟢 Low (Severity 3): $sev3"
+        
+        # Top violazioni
+        if [ "$total_violations" -gt 0 ]; then
+            echo ""
+            echo "🔝 Top 5 violazioni più comuni:"
+            jq -r '[.[] | .ruleName] | group_by(.) | map({rule: .[0], count: length}) | sort_by(-.count) | limit(5; .[]) | "   - \(.rule): \(.count) occorrenze"' "$report_path/scanner-report.json" 2>/dev/null
         fi
     fi
     
-    # Mostra sempre il summary
-    if [ -f "$report_path/scanner-report.json" ]; then
-        displayScannerSummary "$report_path/scanner-report.json"
-    fi
-    
     echo ""
-    echo "📊 Report generati in: $report_path/"
+    echo "📊 Report salvati in: $report_path/"
     [ -f "$report_path/scanner-report.html" ] && echo "   📄 HTML: scanner-report.html"
     [ -f "$report_path/scanner-report.json" ] && echo "   📄 JSON: scanner-report.json"
     
-    # Analizza risultati basandosi sul contenuto reale
-    if [ $has_violations -eq 0 ]; then
-        echo ""
-        echo "✅ Analisi completata: NESSUNA VIOLAZIONE TROVATA"
+    # Valuta risultato
+    echo ""
+    if [ "$total_violations" -eq 0 ]; then
+        echo "✅ Analisi completata: NESSUNA VIOLAZIONE"
         return 0
     else
-        echo ""
         echo "⚠️  Trovate $total_violations violazioni"
         
-        if [ "$fail_on_violations" == "true" ]; then
-            echo "❌ Build fallita per violazioni PMD (failOnViolations=true)"
+        if [ "$pmd_threshold" == "true" ]; then
+            echo "❌ Build fallita (failOnViolations=true)"
             return 1
         else
-            echo "⚠️  Build continua nonostante le violazioni (failOnViolations=false)"
+            echo "⚠️  Build continua (failOnViolations=false)"
             return 0
         fi
-    fi
-}
-
-runPMDDirect(){
-    local source_path="$1"
-    local report_path="$2"
-    local ruleset="$3"
-    local fail_on_violations="$4"
-    
-    echo "🚀 Esecuzione PMD..."
-    
-    # File di output
-    local html_report="$report_path/pmd-report.html"
-    local xml_report="$report_path/pmd-report.xml"
-    local json_report="$report_path/pmd-report.json"
-    
-    # Comando PMD
-    pmd check \
-        --dir "$source_path/classes,$source_path/triggers" \
-        --rulesets "$ruleset" \
-        --format html \
-        --report-file "$html_report" \
-        --no-cache \
-        --fail-on-violation false
-    
-    local pmd_exit=$?
-    
-    # Genera anche report JSON se possibile
-    pmd check \
-        --dir "$source_path/classes,$source_path/triggers" \
-        --rulesets "$ruleset" \
-        --format json \
-        --report-file "$json_report" \
-        --no-cache \
-        --fail-on-violation false 2>/dev/null
-    
-    # Analizza risultati
-    echo ""
-    if [ -f "$json_report" ]; then
-        displayPMDSummary "$json_report"
-    fi
-    
-    echo "📊 Report disponibili in: $report_path/"
-    ls -lh "$report_path"
-    
-    # Determina se fallire la build
-    if [ $pmd_exit -ne 0 ] && [ "$fail_on_violations" == "true" ]; then
-        echo "❌ Build fallita per violazioni PMD"
-        return 1
-    elif [ $pmd_exit -ne 0 ]; then
-        echo "⚠️  Violazioni trovate ma build continua"
-        return 0
-    else
-        echo "✅ Nessuna violazione trovata"
-        return 0
-    fi
-}
-
-displayScannerSummary(){
-    local json_file="$1"
-    
-    if ! command -v jq >/dev/null 2>&1; then
-        return 0
-    fi
-    
-    echo ""
-    echo "📈 Riepilogo violazioni:"
-    
-    # Conta violazioni per severity
-    local severity_1=$(jq '[.[] | select(.severity == 1)] | length' "$json_file" 2>/dev/null || echo "0")
-    local severity_2=$(jq '[.[] | select(.severity == 2)] | length' "$json_file" 2>/dev/null || echo "0")
-    local severity_3=$(jq '[.[] | select(.severity == 3)] | length' "$json_file" 2>/dev/null || echo "0")
-    
-    echo "   🔴 Severity 1 (High): $severity_1"
-    echo "   🟡 Severity 2 (Medium): $severity_2"
-    echo "   🟢 Severity 3 (Low): $severity_3"
-    
-    # Top 5 violazioni più comuni
-    echo ""
-    echo "🔝 Top 5 violazioni:"
-    jq -r '[.[] | .ruleName] | group_by(.) | map({rule: .[0], count: length}) | sort_by(-.count) | limit(5; .[]) | "   - \(.rule): \(.count) occorrenze"' "$json_file" 2>/dev/null
-}
-
-displayPMDSummary(){
-    local json_file="$1"
-    
-    if ! command -v jq >/dev/null 2>&1; then
-        return 0
-    fi
-    
-    echo ""
-    echo "📈 Riepilogo violazioni PMD:"
-    
-    local total=$(jq '.processingErrors + .suppressedViolations + (.files[].violations | length)' "$json_file" 2>/dev/null | awk '{s+=$1} END {print s}')
-    
-    echo "   Totale violazioni: ${total:-0}"
-    
-    # Violazioni per priorità
-    if [ -f "$json_file" ]; then
-        echo ""
-        echo "   Per priorità:"
-        jq -r '.files[].violations[] | .priority' "$json_file" 2>/dev/null | sort | uniq -c | while read count priority; do
-            echo "   - Priority $priority: $count violazioni"
-        done
     fi
 }
 
