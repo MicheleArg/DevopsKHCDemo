@@ -367,6 +367,23 @@ validate(){
                 --target-org "$envTarget" \
                 --json > "./Release/deploy-results.json"; then
                 echo "✅ Validazione completata con successo"
+
+                coverage=$(jq '
+                .result.details.runTestResult.codeCoverage as $c |
+                (
+                    ($c | map(.numLocations - .numLocationsNotCovered) | add) /
+                    ($c | map(.numLocations) | add)
+                ) * 100
+                ' "./Release/deploy-results.json")
+
+                printf "Salesforce coverage (deploy): %.2f%%\n" "$coverage"
+
+                if (( $(echo "$coverage < $THRESHOLD" | bc -l) )); then
+                    echo "❌ Coverage Salesforce sotto soglia ($coverage%)"
+                    exit 1
+                else
+                    echo "✅ Coverage Salesforce OK ($coverage%)"
+                fi
             else
                 echo "❌ Validazione fallita"
                 return 1
