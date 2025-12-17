@@ -7,7 +7,7 @@ on:
       - main
 
 jobs:
-  run-script:
+  deploy:
     # Verifica che la PR sia stata mergiata
     if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
