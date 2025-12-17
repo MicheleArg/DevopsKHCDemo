@@ -385,7 +385,7 @@ validate(){
                 --json > "./Release/deploy-results.json"; then
                 echo "✅ Validazione completata con successo"
 
-                if [ "$flag" -eq 0 ]; then
+                if [ "$default" -eq 0 ]; then
                     coverage=$(jq '
                     .result.details.runTestResult.codeCoverage as $c |
                     (
@@ -1193,56 +1193,97 @@ runSalesforceScanner(){
     
     echo "🚀 Esecuzione Salesforce Scanner..."
     
-    # Costruisci il comando base
-    local scanner_cmd="sf scanner run"
-    scanner_cmd+=" --target '$source_path/classes/*.cls,$source_path/triggers/*.trigger'"
-    scanner_cmd+=" --format table,html,json"
-    scanner_cmd+=" --outfile '$report_path/scanner-report'"
+    # Trova tutti i file da analizzare
+    local target_files=""
     
-    # Aggiungi category/ruleset se specificato
-    if [ -n "$ruleset" ]; then
-        scanner_cmd+=" --category '$(echo $ruleset | sed 's/category\/apex\///g' | sed 's/\.xml//g')'"
+    # Aggiungi classi se esistono
+    if [ -d "$source_path/classes" ] && [ "$(ls -A $source_path/classes/*.cls 2>/dev/null)" ]; then
+        target_files="$source_path/classes"
     fi
     
-    echo "   Comando: $scanner_cmd"
+    # Aggiungi triggers se esistono
+    if [ -d "$source_path/triggers" ] && [ "$(ls -A $source_path/triggers/*.trigger 2>/dev/null)" ]; then
+        if [ -n "$target_files" ]; then
+            target_files="$target_files,$source_path/triggers"
+        else
+            target_files="$source_path/triggers"
+        fi
+    fi
+    
+    if [ -z "$target_files" ]; then
+        echo "⚠️  Nessun file Apex/Trigger trovato da analizzare"
+        return 0
+    fi
+    
+    echo "📂 Target files: $target_files"
+    
+    # Prepara le categorie
+    local categories=""
+    if [ -n "$ruleset" ]; then
+        categories=$(echo "$ruleset" | sed 's/category\/apex\///g' | sed 's/\.xml//g' | tr ',' ' ')
+    else
+        categories="design bestpractices errorprone performance security"
+    fi
+    
+    echo "📋 Categorie: $categories"
     echo ""
     
-    # Esegui scanner
-    eval $scanner_cmd
+    # Esegui scanner con sintassi corretta (flag multipli)
+    sf scanner run \
+        --target "$target_files" \
+        --format table \
+        --format html \
+        --format json \
+        --outfile "$report_path/scanner-report" \
+        --category $categories \
+        --normalize-severity
+    
     local exit_code=$?
     
-    # Analizza risultati
-    if [ $exit_code -eq 0 ]; then
-        echo ""
-        echo "✅ Analisi completata senza violazioni critiche"
-        
-        # Mostra summary se esiste JSON
-        if [ -f "$report_path/scanner-report.json" ]; then
-            displayScannerSummary "$report_path/scanner-report.json"
+    echo ""
+    
+    # Controlla se ci sono violazioni reali nel JSON
+    local has_violations=0
+    local total_violations=0
+    
+    if [ -f "$report_path/scanner-report.json" ]; then
+        # Conta le violazioni dal JSON
+        if command -v jq >/dev/null 2>&1; then
+            total_violations=$(jq '[.[] | select(.violations != null) | .violations[]] | length' "$report_path/scanner-report.json" 2>/dev/null || echo "0")
+            [ "$total_violations" -gt 0 ] && has_violations=1
+        else
+            # Fallback: controlla se il JSON contiene "violations"
+            if grep -q '"violations"' "$report_path/scanner-report.json" 2>/dev/null; then
+                has_violations=1
+                total_violations="N/A"
+            fi
         fi
-        
+    fi
+    
+    # Mostra sempre il summary
+    if [ -f "$report_path/scanner-report.json" ]; then
+        displayScannerSummary "$report_path/scanner-report.json"
+    fi
+    
+    echo ""
+    echo "📊 Report generati in: $report_path/"
+    [ -f "$report_path/scanner-report.html" ] && echo "   📄 HTML: scanner-report.html"
+    [ -f "$report_path/scanner-report.json" ] && echo "   📄 JSON: scanner-report.json"
+    
+    # Analizza risultati basandosi sul contenuto reale
+    if [ $has_violations -eq 0 ]; then
         echo ""
-        echo "📊 Report disponibili in: $report_path/"
-        ls -lh "$report_path"
-        
+        echo "✅ Analisi completata: NESSUNA VIOLAZIONE TROVATA"
         return 0
     else
         echo ""
-        echo "⚠️  Analisi completata con violazioni"
-        
-        # Mostra summary se esiste JSON
-        if [ -f "$report_path/scanner-report.json" ]; then
-            displayScannerSummary "$report_path/scanner-report.json"
-        fi
-        
-        echo ""
-        echo "📊 Report disponibili in: $report_path/"
+        echo "⚠️  Trovate $total_violations violazioni"
         
         if [ "$fail_on_violations" == "true" ]; then
             echo "❌ Build fallita per violazioni PMD (failOnViolations=true)"
             return 1
         else
-            echo "⚠️  Violazioni trovate ma build continua (failOnViolations=false)"
+            echo "⚠️  Build continua nonostante le violazioni (failOnViolations=false)"
             return 0
         fi
     fi
