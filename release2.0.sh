@@ -358,20 +358,18 @@ validate(){
                 --source-dir "./Release/force-app/main/default" \
                 --test-level RunSpecifiedTests \
                 --tests "$test_list" \
-                --target-org "$envTarget" \
-                --json > "./Release/deploy-results.json"; then
+                --target-org "$envTarget"; then
                 echo "✅ Validazione completata con successo"
 
-                coverage=$(jq '.result.details.codeCoverage' "./Release/deploy-results.json" | jq '[.[]?.coverage] | add / length')
-                echo "Copertura media: $coverage%"
-
+                sf apex run test --tests "$test_list" --result-format json --code-coverage --wait 10 >  "./Release/test-results.json"
+                coverage=$(jq '.summary.coverage.percentage' "./Release/test-results.json")
+                echo "Coverage: $coverage%"
                 if (( $(echo "$coverage < 80" | bc -l) )); then
-                    echo "❌ Copertura sotto 80%!"
+                    echo "❌ Coverage sotto 80%!"
                     exit 1
                 else
-                    echo "✅ Copertura OK"
+                    echo "✅ Coverage OK"
                 fi
-                return 0
             else
                 echo "❌ Validazione fallita"
                 return 1
