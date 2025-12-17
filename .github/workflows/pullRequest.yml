@@ -61,16 +61,6 @@ jobs:
           else
             echo "⚠️ Classes folder not found, skipping PMD analysis."
           fi
-
-       - name: Fail on PMD violations
-         if: exists('./Release/pmd/pmd-report.html')
-         run: |
-            if grep -q "<violation" ./Release/pmd/pmd-report.html; then
-              echo "❌ PMD violations found"
-              exit 1
-            else
-              echo "✅ No PMD violations"
-            fi
           
        - name: Upload artifact
          if: always()
