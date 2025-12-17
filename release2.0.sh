@@ -1147,16 +1147,16 @@ runPMD(){
     mkdir -p "$report_path"
     
     # Leggi configurazioni PMD dal config.json
-    local pmd_enabled pmd_ruleset pmd_threshold
+    local pmd_enabled pmd_threshold pmd_severity
     
     if command -v jq >/dev/null 2>&1; then
         pmd_enabled=$(jq -r '.pmdConfig.enabled // "true"' "$config_file")
-        pmd_ruleset=$(jq -r '.pmdConfig.ruleset // "category/apex/design.xml,category/apex/bestpractices.xml,category/apex/errorprone.xml,category/apex/performance.xml,category/apex/security.xml"' "$config_file")
         pmd_threshold=$(jq -r '.pmdConfig.failOnViolations // "false"' "$config_file")
+        pmd_severity=$(jq -r '.pmdConfig.minSeverity // "2"' "$config_file")
     else
         pmd_enabled="true"
-        pmd_ruleset="category/apex/design.xml,category/apex/bestpractices.xml,category/apex/errorprone.xml,category/apex/performance.xml,category/apex/security.xml"
         pmd_threshold="false"
+        pmd_severity="2"
     fi
     
     if [ "$pmd_enabled" != "true" ]; then
@@ -1166,7 +1166,7 @@ runPMD(){
     
     # Verifica che Code Analyzer sia installato
     if ! sf code-analyzer run --help >/dev/null 2>&1; then
-        echo "❌ Salesforce Code Analyzer non installato"
+        echo "❌ Salesforce Code Analyzer v5.x non installato"
         echo ""
         echo "💡 Installa con:"
         echo "   sf plugins install @salesforce/plugin-code-analyzer"
@@ -1175,86 +1175,75 @@ runPMD(){
     fi
     
     # Trova file da analizzare
-    local target_files=""
-    [ -d "$source_path/classes" ] && target_files="$source_path/classes"
+    local workspace=""
+    [ -d "$source_path/classes" ] && workspace="$source_path/classes"
     
     if [ -d "$source_path/triggers" ]; then
-        [ -n "$target_files" ] && target_files="$target_files,$source_path/triggers" || target_files="$source_path/triggers"
+        [ -n "$workspace" ] && workspace="$workspace,$source_path/triggers" || workspace="$source_path/triggers"
     fi
     
-    if [ -z "$target_files" ]; then
+    if [ -z "$workspace" ]; then
         echo "⚠️  Nessun file Apex/Trigger da analizzare"
         return 0
     fi
     
-    # Prepara categorie PMD
-    local pmd_categories=$(echo "$pmd_ruleset" | sed 's/category\/apex\///g' | sed 's/\.xml//g' | tr ',' ' ')
+    # Costruisci rule selector per PMD
+    # Esempi: "pmd", "pmd AND Severity<=2", "pmd AND (Security OR Performance)"
+    local rule_selector="pmd AND Severity<=$pmd_severity"
     
-    echo "📂 Target: $target_files"
-    echo "📋 Categories: $pmd_categories"
+    echo "📂 Workspace: $workspace"
+    echo "📋 Rule Selector: $rule_selector"
     echo "⚙️  Fail on violations: $pmd_threshold"
     echo ""
     
-    # Genera report JSON
-    echo "📊 Generazione report JSON..."
+    # Esegui analisi con output JSON
+    echo "📊 Esecuzione analisi Code Analyzer v5..."
     sf code-analyzer run \
-        --target "$target_files" \
-        --format json \
-        --outfile "$report_path/scanner-report.json" \
-        --engine pmd \
-        --pmd-config pmdCategories="$pmd_categories" \
-        --normalize-severity \
-        >/dev/null 2>&1
+        --workspace "$workspace" \
+        --rule-selector "$rule_selector" \
+        --output-file "$report_path/scanner-report.json" \
+        --output-file "$report_path/scanner-report.html"
     
-    # Genera report HTML
-    echo "📊 Generazione report HTML..."
-    sf code-analyzer run \
-        --target "$target_files" \
-        --format html \
-        --outfile "$report_path/scanner-report.html" \
-        --engine pmd \
-        --pmd-config pmdCategories="$pmd_categories" \
-        --normalize-severity \
-        >/dev/null 2>&1
+    local exit_code=$?
     
-    # Mostra risultati a console
+    # Mostra risultati in formato tabella
     echo ""
-    echo "📋 Risultati analisi:"
+    echo "📋 Risultati analisi (formato tabella):"
     sf code-analyzer run \
-        --target "$target_files" \
-        --format table \
-        --engine pmd \
-        --pmd-config pmdCategories="$pmd_categories" \
-        --normalize-severity
+        --workspace "$workspace" \
+        --rule-selector "$rule_selector" \
+        --view table
     
-    # Conta violazioni
+    echo ""
+    
+    # Conta violazioni dal file JSON
     local total_violations=0
     if [ -f "$report_path/scanner-report.json" ] && command -v jq >/dev/null 2>&1; then
-        total_violations=$(jq '[.[] | select(.violations != null) | .violations[]] | length' "$report_path/scanner-report.json" 2>/dev/null || echo "0")
+        # Nel formato v5, le violazioni sono direttamente nell'array root
+        total_violations=$(jq 'length' "$report_path/scanner-report.json" 2>/dev/null || echo "0")
         
-        # Mostra summary
-        echo ""
-        echo "📈 Riepilogo violazioni:"
-        
-        local sev1=$(jq '[.[] | select(.severity == 1)] | length' "$report_path/scanner-report.json" 2>/dev/null || echo "0")
-        local sev2=$(jq '[.[] | select(.severity == 2)] | length' "$report_path/scanner-report.json" 2>/dev/null || echo "0")
-        local sev3=$(jq '[.[] | select(.severity == 3)] | length' "$report_path/scanner-report.json" 2>/dev/null || echo "0")
-        
-        echo "   🔴 High (Severity 1): $sev1"
-        echo "   🟡 Medium (Severity 2): $sev2"
-        echo "   🟢 Low (Severity 3): $sev3"
-        
-        # Top violazioni
         if [ "$total_violations" -gt 0 ]; then
+            echo "📈 Riepilogo violazioni:"
+            
+            # Conta per severity
+            local sev1=$(jq '[.[] | select(.severity == 1)] | length' "$report_path/scanner-report.json" 2>/dev/null || echo "0")
+            local sev2=$(jq '[.[] | select(.severity == 2)] | length' "$report_path/scanner-report.json" 2>/dev/null || echo "0")
+            local sev3=$(jq '[.[] | select(.severity == 3)] | length' "$report_path/scanner-report.json" 2>/dev/null || echo "0")
+            
+            echo "   🔴 Critical (Severity 1): $sev1"
+            echo "   🟡 High (Severity 2): $sev2"
+            echo "   🟢 Moderate (Severity 3): $sev3"
+            
+            # Top 5 violazioni
             echo ""
             echo "🔝 Top 5 violazioni più comuni:"
-            jq -r '[.[] | .ruleName] | group_by(.) | map({rule: .[0], count: length}) | sort_by(-.count) | limit(5; .[]) | "   - \(.rule): \(.count) occorrenze"' "$report_path/scanner-report.json" 2>/dev/null
+            jq -r '[.[] | .name] | group_by(.) | map({rule: .[0], count: length}) | sort_by(-.count) | limit(5; .[]) | "   - \(.rule): \(.count) occorrenze"' "$report_path/scanner-report.json" 2>/dev/null
         fi
     fi
     
     echo ""
     echo "📊 Report salvati in: $report_path/"
-    [ -f "$report_path/scanner-report.html" ] && echo "   📄 HTML: scanner-report.html"
+    [ -f "$report_path/scanner-report.html" ] && echo "   📄 HTML: scanner-report.html (apri nel browser)"
     [ -f "$report_path/scanner-report.json" ] && echo "   📄 JSON: scanner-report.json"
     
     # Valuta risultato
