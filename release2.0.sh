@@ -352,6 +352,7 @@ validate(){
     if [ "$testToRun" == 'true' ]; then
         # Con test specificati
         test_list=""
+        default=0
         createTestList
         
         if [ -z "$test_list" ]; then
@@ -368,24 +369,26 @@ validate(){
                 --json > "./Release/deploy-results.json"; then
                 echo "✅ Validazione completata con successo"
 
-                coverage=$(jq '
-                .result.details.runTestResult.codeCoverage as $c |
-                (
-                    ($c | map(.numLocations - .numLocationsNotCovered) | add) /
-                    ($c | map(.numLocations) | add)
-                ) * 100
-                ' "./Release/deploy-results.json")
+                if [ "$flag" -eq 0 ]; then
+                    coverage=$(jq '
+                    .result.details.runTestResult.codeCoverage as $c |
+                    (
+                        ($c | map(.numLocations - .numLocationsNotCovered) | add) /
+                        ($c | map(.numLocations) | add)
+                    ) * 100
+                    ' "./Release/deploy-results.json")
 
-                printf "Salesforce coverage (deploy): %.2f%%\n" "$coverage"
+                    printf "Salesforce coverage (deploy): %.2f%%\n" "$coverage"
 
-                local THRESHOLD=$(jq -r '.["testCoverageThreshold"] // empty' "$config_file")
+                    local THRESHOLD=$(jq -r '.["testCoverageThreshold"] // empty' "$config_file")
 
-                if (( $(echo "$coverage < $THRESHOLD" | bc -l) )); then
-                    echo "❌ Coverage Salesforce sotto soglia ($coverage%)"
-                    exit 1
-                else
-                    echo "✅ Coverage Salesforce OK ($coverage%)"
-                fi
+                    if (( $(echo "$coverage < $THRESHOLD" | bc -l) )); then
+                        echo "❌ Coverage Salesforce sotto soglia ($coverage%)"
+                        exit 1
+                    else
+                        echo "✅ Coverage Salesforce OK ($coverage%)"
+                    fi       
+                fi                                   
             else
                 echo "❌ Validazione fallita"
                 return 1
@@ -434,6 +437,7 @@ createTestList(){
             echo "⚙️  Uso test di default dal catalogo: $default_test"
             echo "$default_test"
             test_list="$default_test"
+            default=1
         else
             echo "⚠️  Nessun test di default configurato"
         fi
