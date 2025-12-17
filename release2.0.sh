@@ -1191,7 +1191,7 @@ runSalesforceScanner(){
     local ruleset="$3"
     local fail_on_violations="$4"
     
-    echo "🚀 Esecuzione Salesforce Scanner..."
+    echo "🚀 Esecuzione Salesforce Code Analyzer..."
     
     # Trova tutti i file da analizzare
     local target_files=""
@@ -1217,46 +1217,99 @@ runSalesforceScanner(){
     
     echo "📂 Target files: $target_files"
     
-    # Prepara le categorie
-    local categories=""
+    # Prepara le categorie PMD
+    local pmd_categories=""
     if [ -n "$ruleset" ]; then
-        categories=$(echo "$ruleset" | sed 's/category\/apex\///g' | sed 's/\.xml//g' | tr ',' ' ')
+        pmd_categories=$(echo "$ruleset" | sed 's/category\/apex\///g' | sed 's/\.xml//g' | tr ',' ' ')
     else
-        categories="design bestpractices errorprone performance security"
+        pmd_categories="design bestpractices errorprone performance security"
     fi
     
-    echo "📋 Categorie: $categories"
+    echo "📋 PMD Categories: $pmd_categories"
     echo ""
     
-    # Esegui scanner per JSON (il più completo)
-    echo "📊 Generazione report JSON..."
-    sf scanner run \
-        --target "$target_files" \
-        --format json \
-        --outfile "$report_path/scanner-report.json" \
-        --category $categories \
-        --normalize-severity
+    # Determina quale versione usare (v5.x nuova, v4.x legacy)
+    local use_v5=false
+    if sf code-analyzer --help >/dev/null 2>&1; then
+        use_v5=true
+        echo "✅ Utilizzo Code Analyzer v5.x (nuova versione)"
+    elif sf scanner --help >/dev/null 2>&1; then
+        echo "⚠️  Utilizzo Code Analyzer v4.x (legacy - aggiorna a v5.x)"
+    else
+        echo "❌ Code Analyzer non installato"
+        return 1
+    fi
     
-    local exit_code=$?
-    
-    # Esegui scanner per HTML (report visuale)
-    echo "📊 Generazione report HTML..."
-    sf scanner run \
-        --target "$target_files" \
-        --format html \
-        --outfile "$report_path/scanner-report.html" \
-        --category $categories \
-        --normalize-severity \
-        >/dev/null 2>&1
-    
-    # Esegui scanner per output a console (opzionale)
     echo ""
-    echo "📋 Risultati analisi:"
-    sf scanner run \
-        --target "$target_files" \
-        --format table \
-        --category $categories \
-        --normalize-severity
+    
+    if [ "$use_v5" = true ]; then
+        # ========== VERSIONE 5.x (NUOVA) ==========
+        
+        # Esegui per JSON
+        echo "📊 Generazione report JSON (v5)..."
+        sf code-analyzer run \
+            --target "$target_files" \
+            --format json \
+            --outfile "$report_path/scanner-report.json" \
+            --engine pmd \
+            --pmd-config pmdCategories="$pmd_categories" \
+            --normalize-severity
+        
+        local exit_code=$?
+        
+        # Esegui per HTML
+        echo "📊 Generazione report HTML (v5)..."
+        sf code-analyzer run \
+            --target "$target_files" \
+            --format html \
+            --outfile "$report_path/scanner-report.html" \
+            --engine pmd \
+            --pmd-config pmdCategories="$pmd_categories" \
+            --normalize-severity \
+            >/dev/null 2>&1
+        
+        # Esegui per output console
+        echo ""
+        echo "📋 Risultati analisi:"
+        sf code-analyzer run \
+            --target "$target_files" \
+            --format table \
+            --engine pmd \
+            --pmd-config pmdCategories="$pmd_categories" \
+            --normalize-severity
+    else
+        # ========== VERSIONE 4.x (LEGACY) ==========
+        
+        # Esegui per JSON
+        echo "📊 Generazione report JSON (v4 - legacy)..."
+        sf scanner run \
+            --target "$target_files" \
+            --format json \
+            --outfile "$report_path/scanner-report.json" \
+            --category $pmd_categories \
+            --normalize-severity
+        
+        local exit_code=$?
+        
+        # Esegui per HTML
+        echo "📊 Generazione report HTML (v4 - legacy)..."
+        sf scanner run \
+            --target "$target_files" \
+            --format html \
+            --outfile "$report_path/scanner-report.html" \
+            --category $pmd_categories \
+            --normalize-severity \
+            >/dev/null 2>&1
+        
+        # Esegui per output console
+        echo ""
+        echo "📋 Risultati analisi:"
+        sf scanner run \
+            --target "$target_files" \
+            --format table \
+            --category $pmd_categories \
+            --normalize-severity
+    fi
     
     echo ""
     
