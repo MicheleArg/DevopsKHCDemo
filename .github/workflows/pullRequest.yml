@@ -38,7 +38,30 @@ jobs:
            ls
            chmod +x ./release2.0.sh
            ./release2.0.sh validate ${{ github.head_ref }} ${{ github.base_ref }} true
+       
+       - name: Set up Java
+         uses: actions/setup-java@v3
+         with:
+          distribution: temurin
+          java-version: '17'
 
+       - name: Install PMD
+         run: |
+          npm install -g pmd-bin
+    
+       - name: Run PMD analysis
+         run: |
+          if [ -d "./Release/force-app/main/default/classes" ]; then
+            echo "📦 Classes folder found, running PMD..."
+            mkdir -p ./Release/pmd
+            pmd -d ./Release/force-app/main/default/classes \
+                -R category/apex/codestyle.xml \
+                -f html \
+                -r ./Release/pmd/pmd-report.html || true
+          else
+            echo "⚠️ Classes folder not found, skipping PMD analysis."
+          fi
+          
        - name: Upload artifact
          if: always()
          uses: actions/upload-artifact@v4
