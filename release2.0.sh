@@ -378,7 +378,7 @@ validate(){
 
                 printf "Salesforce coverage (deploy): %.2f%%\n" "$coverage"
 
-                if (( $(echo "$coverage < $THRESHOLD" | bc -l) )); then
+                if (( $(echo "$coverage < 80" | bc -l) )); then
                     echo "❌ Coverage Salesforce sotto soglia ($coverage%)"
                     exit 1
                 else
