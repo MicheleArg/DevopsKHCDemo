@@ -25,5 +25,6 @@ private class KHC_CaseClassTest {
     @isTest
     static void myUnitTest() {
         KHC_CaseClass test = new KHC_CaseClass();
+        KHC_CaseClass.test1();
     }
 }

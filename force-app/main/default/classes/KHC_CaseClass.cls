@@ -20,4 +20,8 @@ public with sharing class KHC_CaseClass {
     public static void test1(){
         Integer x =1;
     }
+
+    public static void test2(){
+        Integer x =1;
+    }
 }
