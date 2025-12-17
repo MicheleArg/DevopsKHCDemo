@@ -16,4 +16,8 @@ public with sharing class KHC_CaseClass {
             System.debug(2);
         }
     }
+
+    public static void test1(){
+        Integer x =1;
+    }
 }
