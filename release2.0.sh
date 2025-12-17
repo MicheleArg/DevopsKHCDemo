@@ -1228,17 +1228,35 @@ runSalesforceScanner(){
     echo "📋 Categorie: $categories"
     echo ""
     
-    # Esegui scanner con sintassi corretta (flag multipli)
+    # Esegui scanner per JSON (il più completo)
+    echo "📊 Generazione report JSON..."
     sf scanner run \
         --target "$target_files" \
-        --format table \
-        --format html \
         --format json \
-        --outfile "$report_path/scanner-report" \
+        --outfile "$report_path/scanner-report.json" \
         --category $categories \
         --normalize-severity
     
     local exit_code=$?
+    
+    # Esegui scanner per HTML (report visuale)
+    echo "📊 Generazione report HTML..."
+    sf scanner run \
+        --target "$target_files" \
+        --format html \
+        --outfile "$report_path/scanner-report.html" \
+        --category $categories \
+        --normalize-severity \
+        >/dev/null 2>&1
+    
+    # Esegui scanner per output a console (opzionale)
+    echo ""
+    echo "📋 Risultati analisi:"
+    sf scanner run \
+        --target "$target_files" \
+        --format table \
+        --category $categories \
+        --normalize-severity
     
     echo ""
     
