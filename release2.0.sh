@@ -465,7 +465,7 @@ createTestList(){
         if [ -n "$test_class" ]; then
             # Test specifico trovato
             echo "     ✓ Test specifico: $test_class"
-            test_set["$test_class"]=1
+            test_list="$test_class"
         else
             echo "     ⚠️  Nessun test configurato"
         fi
