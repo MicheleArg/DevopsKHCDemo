@@ -223,10 +223,16 @@ validateDeploy(){
 
     createReleasePackage
 
-    validate
+     if ! validate; then
+        echo "❌ Errore nella validate"
+        cleanupMergeBranch
+        exit 1
+    fi
 
      # Pulizia branch temporaneo
     cleanupMergeBranch
+
+   
 }
 
 
@@ -358,9 +364,28 @@ validate(){
                 --source-dir "./Release/force-app/main/default" \
                 --test-level RunSpecifiedTests \
                 --tests "$test_list" \
-                --target-org "$envTarget"; then
+                --target-org "$envTarget" \
+                --json > "./Release/deploy-results.json"; then
                 echo "✅ Validazione completata con successo"
-                return 0
+
+                coverage=$(jq '
+                .result.details.runTestResult.codeCoverage as $c |
+                (
+                    ($c | map(.numLocations - .numLocationsNotCovered) | add) /
+                    ($c | map(.numLocations) | add)
+                ) * 100
+                ' "./Release/deploy-results.json")
+
+                printf "Salesforce coverage (deploy): %.2f%%\n" "$coverage"
+
+                local THRESHOLD=$(jq -r '.["testCoverageThreshold"] // empty' "$config_file")
+
+                if (( $(echo "$coverage < $THRESHOLD" | bc -l) )); then
+                    echo "❌ Coverage Salesforce sotto soglia ($coverage%)"
+                    exit 1
+                else
+                    echo "✅ Coverage Salesforce OK ($coverage%)"
+                fi
             else
                 echo "❌ Validazione fallita"
                 return 1
