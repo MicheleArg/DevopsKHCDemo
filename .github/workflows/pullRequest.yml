@@ -24,6 +24,7 @@ jobs:
            echo "📦 Installing Salesforce CLI..."
            npm install -g @salesforce/cli
            sf --version
+           sf plugins install @salesforce/sfdx-scanner
 
        - name: Configure git identity
          run: |
@@ -52,12 +53,21 @@ jobs:
        - name: Run PMD analysis
          run: |
           if [ -d "./Release/force-app/main/default/classes" ]; then
-            echo "📦 Classes folder found, running PMD..."
-            mkdir -p ./Release/pmd
-            pmd -d ./Release/force-app/main/default/classes \
-                -R category/apex/codestyle.xml \
-                -f html \
-                -r ./Release/pmd/pmd-report.html || true
+                echo "📦 Classes folder found, running PMD..."
+                mkdir -p ./Release/pmd
+          
+                # Esegui PMD e genera il report HTML
+                pmd -d ./Release/force-app/main/default/classes \
+                    -R category/apex/codestyle.xml \
+                    -f html \
+                    -r ./Release/pmd/pmd-report.html || true
+          
+                # Esegui PMD in formato testo per mostrare problemi nei log
+                echo "📄 PMD text report:"
+                pmd -d ./Release/force-app/main/default/classes \
+                    -R category/apex/codestyle.xml \
+                    -f text \
+                    -debug
           else
             echo "⚠️ Classes folder not found, skipping PMD analysis."
           fi
