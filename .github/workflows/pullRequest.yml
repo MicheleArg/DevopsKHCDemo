@@ -24,6 +24,7 @@ jobs:
            echo "📦 Installing Salesforce CLI..."
            npm install -g @salesforce/cli
            sf --version
+           sf plugins install @salesforce/plugin-code-analyzer
 
        - name: Configure git identity
          run: |
@@ -38,7 +39,7 @@ jobs:
            ls
            chmod +x ./release2.0.sh
            ./release2.0.sh validate ${{ github.head_ref }} ${{ github.base_ref }} true
-
+          
        - name: Upload artifact
          if: always()
          uses: actions/upload-artifact@v4

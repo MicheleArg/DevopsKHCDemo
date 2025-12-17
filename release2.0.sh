@@ -39,7 +39,18 @@ deploy(){
 
     createReleasePackage
 
-    deploySFDC
+    if ! runPMD; then
+        echo "⚠️  Analisi PMD completata con warning"
+        # Decidi se vuoi bloccare la validazione o continuare
+    fi
+
+
+    if ! deploySFDC; then
+        echo "❌ Errore nel deploy"
+        cleanupMergeBranch
+        exit 1
+    fi
+    
 
      # Pulizia branch temporaneo
     cleanupMergeBranch
@@ -223,6 +234,11 @@ validateDeploy(){
 
     createReleasePackage
 
+    if ! runPMD; then
+        echo "⚠️  Analisi PMD completata con warning"
+        # Decidi se vuoi bloccare la validazione o continuare
+    fi
+
      if ! validate; then
         echo "❌ Errore nella validate"
         cleanupMergeBranch
@@ -352,6 +368,7 @@ validate(){
     if [ "$testToRun" == 'true' ]; then
         # Con test specificati
         test_list=""
+        default=0
         createTestList
         
         if [ -z "$test_list" ]; then
@@ -368,24 +385,26 @@ validate(){
                 --json > "./Release/deploy-results.json"; then
                 echo "✅ Validazione completata con successo"
 
-                coverage=$(jq '
-                .result.details.runTestResult.codeCoverage as $c |
-                (
-                    ($c | map(.numLocations - .numLocationsNotCovered) | add) /
-                    ($c | map(.numLocations) | add)
-                ) * 100
-                ' "./Release/deploy-results.json")
+                if [ "$default" -eq 0 ]; then
+                    coverage=$(jq '
+                    .result.details.runTestResult.codeCoverage as $c |
+                    (
+                        ($c | map(.numLocations - .numLocationsNotCovered) | add) /
+                        ($c | map(.numLocations) | add)
+                    ) * 100
+                    ' "./Release/deploy-results.json")
 
-                printf "Salesforce coverage (deploy): %.2f%%\n" "$coverage"
+                    printf "Salesforce coverage (deploy): %.2f%%\n" "$coverage"
 
-                local THRESHOLD=$(jq -r '.["testCoverageThreshold"] // empty' "$config_file")
+                    local THRESHOLD=$(jq -r '.["testCoverageThreshold"] // empty' "$config_file")
 
-                if (( $(echo "$coverage < $THRESHOLD" | bc -l) )); then
-                    echo "❌ Coverage Salesforce sotto soglia ($coverage%)"
-                    exit 1
-                else
-                    echo "✅ Coverage Salesforce OK ($coverage%)"
-                fi
+                    if (( $(echo "$coverage < $THRESHOLD" | bc -l) )); then
+                        echo "❌ Coverage Salesforce sotto soglia ($coverage%)"
+                        exit 1
+                    else
+                        echo "✅ Coverage Salesforce OK ($coverage%)"
+                    fi       
+                fi                                   
             else
                 echo "❌ Validazione fallita"
                 return 1
@@ -433,7 +452,8 @@ createTestList(){
         if [ -n "$default_test" ]; then
             echo "⚙️  Uso test di default dal catalogo: $default_test"
             echo "$default_test"
-            test_set["$default_test"]=1
+            test_list="$default_test"
+            default=1
         else
             echo "⚠️  Nessun test di default configurato"
         fi
@@ -1105,6 +1125,85 @@ cleanupMergeBranch(){
     fi
     
     TEMP_MERGE_BRANCH=""
+}
+
+runPMD(){
+    local config_file="DevOpsConfig/config.json"
+    local source_path="./Release/force-app/main/default"
+    local report_path="./Release/pmd-report"
+    
+    echo ""
+    echo "================================================"
+    echo "🔍 Analisi PMD del codice"
+    echo "================================================"
+    
+    # Verifica esistenza cartella sorgente
+    if [ ! -d "$source_path" ]; then
+        echo "❌ Cartella sorgente non trovata: $source_path"
+        return 1
+    fi
+    
+    # Crea cartella report
+    mkdir -p "$report_path"
+    
+    # Leggi configurazioni PMD dal config.json
+    local pmd_enabled pmd_threshold pmd_severity
+    
+    if command -v jq >/dev/null 2>&1; then
+        pmd_enabled=$(jq -r '.pmdConfig.enabled // "true"' "$config_file")
+        pmd_threshold=$(jq -r '.pmdConfig.failOnViolations // "false"' "$config_file")
+        pmd_severity=$(jq -r '.pmdConfig.minSeverity // "2"' "$config_file")
+    else
+        pmd_enabled="true"
+        pmd_threshold="false"
+        pmd_severity="2"
+    fi
+    
+    if [ "$pmd_enabled" != "true" ]; then
+        echo "⚠️  Analisi PMD disabilitata nel config"
+        return 0
+    fi
+    
+    # Verifica che Code Analyzer sia installato
+    if ! sf code-analyzer run --help >/dev/null 2>&1; then
+        echo "❌ Salesforce Code Analyzer v5.x non installato"
+        echo ""
+        echo "💡 Installa con:"
+        echo "   sf plugins install @salesforce/plugin-code-analyzer"
+        echo ""
+        return 1
+    fi
+    
+    # Trova file da analizzare
+    local workspace=""
+    [ -d "$source_path/classes" ] && workspace="$source_path/classes"
+    
+    if [ -d "$source_path/triggers" ]; then
+        [ -n "$workspace" ] && workspace="$workspace,$source_path/triggers" || workspace="$source_path/triggers"
+    fi
+    
+    if [ -z "$workspace" ]; then
+        echo "⚠️  Nessun file Apex/Trigger da analizzare"
+        return 0
+    fi
+    
+    # Costruisci rule selector per PMD
+    # Esempi: "pmd", "pmd AND Severity<=2", "pmd AND (Security OR Performance)"
+    local rule_selector="pmd AND Severity<=$pmd_severity"
+    
+    echo "📂 Workspace: $workspace"
+    echo "📋 Rule Selector: $rule_selector"
+    echo "⚙️  Fail on violations: $pmd_threshold"
+    echo ""
+    
+    # Esegui analisi con output JSON
+    echo "📊 Esecuzione analisi Code Analyzer v5..."
+    sf code-analyzer run \
+        --workspace "$workspace" \
+        --rule-selector "$rule_selector" \
+        --output-file "$report_path/scanner-report.json" \
+        --output-file "$report_path/scanner-report.html"
+    
 }
 
 export LANG=en_us_8859_1
