@@ -39,7 +39,18 @@ deploy(){
 
     createReleasePackage
 
-    deploySFDC
+    if ! runPMD; then
+        echo "⚠️  Analisi PMD completata con warning"
+        # Decidi se vuoi bloccare la validazione o continuare
+    fi
+
+
+    if ! deploySFDC; then
+        echo "❌ Errore nel deploy"
+        cleanupMergeBranch
+        exit 1
+    fi
+    
 
      # Pulizia branch temporaneo
     cleanupMergeBranch
@@ -222,6 +233,11 @@ validateDeploy(){
     createDiffPackage
 
     createReleasePackage
+
+    if ! runPMD; then
+        echo "⚠️  Analisi PMD completata con warning"
+        # Decidi se vuoi bloccare la validazione o continuare
+    fi
 
      if ! validate; then
         echo "❌ Errore nella validate"
@@ -1109,6 +1125,231 @@ cleanupMergeBranch(){
     fi
     
     TEMP_MERGE_BRANCH=""
+}
+
+runPMD(){
+    local config_file="DevOpsConfig/config.json"
+    local source_path="./Release/force-app/main/default"
+    local report_path="./Release/pmd-report"
+    
+    echo ""
+    echo "================================================"
+    echo "🔍 Analisi PMD del codice"
+    echo "================================================"
+    
+    # Verifica esistenza cartella sorgente
+    if [ ! -d "$source_path" ]; then
+        echo "❌ Cartella sorgente non trovata: $source_path"
+        return 1
+    fi
+    
+    # Crea cartella report
+    mkdir -p "$report_path"
+    
+    # Leggi configurazioni PMD dal config.json
+    local pmd_enabled pmd_ruleset pmd_threshold
+    
+    if command -v jq >/dev/null 2>&1; then
+        pmd_enabled=$(jq -r '.pmdConfig.enabled // "true"' "$config_file")
+        pmd_ruleset=$(jq -r '.pmdConfig.ruleset // "category/apex/design.xml,category/apex/bestpractices.xml,category/apex/errorprone.xml,category/apex/performance.xml,category/apex/security.xml"' "$config_file")
+        pmd_threshold=$(jq -r '.pmdConfig.failOnViolations // "false"' "$config_file")
+    else
+        pmd_enabled="true"
+        pmd_ruleset="category/apex/design.xml,category/apex/bestpractices.xml"
+        pmd_threshold="false"
+    fi
+    
+    if [ "$pmd_enabled" != "true" ]; then
+        echo "⚠️  Analisi PMD disabilitata nel config"
+        return 0
+    fi
+    
+    echo "📋 Configurazione PMD:"
+    echo "   - Ruleset: $pmd_ruleset"
+    echo "   - Fail on violations: $pmd_threshold"
+    echo ""
+    
+    # Verifica quale tool è disponibile: sf scanner o pmd
+    if command -v sf >/dev/null 2>&1 && sf scanner --help >/dev/null 2>&1; then
+        echo "🔧 Utilizzo Salesforce Scanner (sf scanner)..."
+        runSalesforceScanner "$source_path" "$report_path" "$pmd_ruleset" "$pmd_threshold"
+    elif command -v pmd >/dev/null 2>&1; then
+        echo "🔧 Utilizzo PMD diretto..."
+        runPMDDirect "$source_path" "$report_path" "$pmd_ruleset" "$pmd_threshold"
+    else
+        echo "❌ Né 'sf scanner' né 'pmd' sono installati"
+        echo "   Installa uno dei due tool:"
+        echo "   - Salesforce Scanner: sf plugins install @salesforce/sfdx-scanner"
+        echo "   - PMD: https://pmd.github.io/"
+        return 1
+    fi
+}
+
+runSalesforceScanner(){
+    local source_path="$1"
+    local report_path="$2"
+    local ruleset="$3"
+    local fail_on_violations="$4"
+    
+    echo "🚀 Esecuzione Salesforce Scanner..."
+    
+    # Costruisci il comando base
+    local scanner_cmd="sf scanner run"
+    scanner_cmd+=" --target '$source_path/classes/*.cls,$source_path/triggers/*.trigger'"
+    scanner_cmd+=" --format table,html,json"
+    scanner_cmd+=" --outfile '$report_path/scanner-report'"
+    
+    # Aggiungi category/ruleset se specificato
+    if [ -n "$ruleset" ]; then
+        scanner_cmd+=" --category '$(echo $ruleset | sed 's/category\/apex\///g' | sed 's/\.xml//g')'"
+    fi
+    
+    echo "   Comando: $scanner_cmd"
+    echo ""
+    
+    # Esegui scanner
+    eval $scanner_cmd
+    local exit_code=$?
+    
+    # Analizza risultati
+    if [ $exit_code -eq 0 ]; then
+        echo ""
+        echo "✅ Analisi completata senza violazioni critiche"
+        
+        # Mostra summary se esiste JSON
+        if [ -f "$report_path/scanner-report.json" ]; then
+            displayScannerSummary "$report_path/scanner-report.json"
+        fi
+        
+        echo ""
+        echo "📊 Report disponibili in: $report_path/"
+        ls -lh "$report_path"
+        
+        return 0
+    else
+        echo ""
+        echo "⚠️  Analisi completata con violazioni"
+        
+        # Mostra summary se esiste JSON
+        if [ -f "$report_path/scanner-report.json" ]; then
+            displayScannerSummary "$report_path/scanner-report.json"
+        fi
+        
+        echo ""
+        echo "📊 Report disponibili in: $report_path/"
+        
+        if [ "$fail_on_violations" == "true" ]; then
+            echo "❌ Build fallita per violazioni PMD (failOnViolations=true)"
+            return 1
+        else
+            echo "⚠️  Violazioni trovate ma build continua (failOnViolations=false)"
+            return 0
+        fi
+    fi
+}
+
+runPMDDirect(){
+    local source_path="$1"
+    local report_path="$2"
+    local ruleset="$3"
+    local fail_on_violations="$4"
+    
+    echo "🚀 Esecuzione PMD..."
+    
+    # File di output
+    local html_report="$report_path/pmd-report.html"
+    local xml_report="$report_path/pmd-report.xml"
+    local json_report="$report_path/pmd-report.json"
+    
+    # Comando PMD
+    pmd check \
+        --dir "$source_path/classes,$source_path/triggers" \
+        --rulesets "$ruleset" \
+        --format html \
+        --report-file "$html_report" \
+        --no-cache \
+        --fail-on-violation false
+    
+    local pmd_exit=$?
+    
+    # Genera anche report JSON se possibile
+    pmd check \
+        --dir "$source_path/classes,$source_path/triggers" \
+        --rulesets "$ruleset" \
+        --format json \
+        --report-file "$json_report" \
+        --no-cache \
+        --fail-on-violation false 2>/dev/null
+    
+    # Analizza risultati
+    echo ""
+    if [ -f "$json_report" ]; then
+        displayPMDSummary "$json_report"
+    fi
+    
+    echo "📊 Report disponibili in: $report_path/"
+    ls -lh "$report_path"
+    
+    # Determina se fallire la build
+    if [ $pmd_exit -ne 0 ] && [ "$fail_on_violations" == "true" ]; then
+        echo "❌ Build fallita per violazioni PMD"
+        return 1
+    elif [ $pmd_exit -ne 0 ]; then
+        echo "⚠️  Violazioni trovate ma build continua"
+        return 0
+    else
+        echo "✅ Nessuna violazione trovata"
+        return 0
+    fi
+}
+
+displayScannerSummary(){
+    local json_file="$1"
+    
+    if ! command -v jq >/dev/null 2>&1; then
+        return 0
+    fi
+    
+    echo ""
+    echo "📈 Riepilogo violazioni:"
+    
+    # Conta violazioni per severity
+    local severity_1=$(jq '[.[] | select(.severity == 1)] | length' "$json_file" 2>/dev/null || echo "0")
+    local severity_2=$(jq '[.[] | select(.severity == 2)] | length' "$json_file" 2>/dev/null || echo "0")
+    local severity_3=$(jq '[.[] | select(.severity == 3)] | length' "$json_file" 2>/dev/null || echo "0")
+    
+    echo "   🔴 Severity 1 (High): $severity_1"
+    echo "   🟡 Severity 2 (Medium): $severity_2"
+    echo "   🟢 Severity 3 (Low): $severity_3"
+    
+    # Top 5 violazioni più comuni
+    echo ""
+    echo "🔝 Top 5 violazioni:"
+    jq -r '[.[] | .ruleName] | group_by(.) | map({rule: .[0], count: length}) | sort_by(-.count) | limit(5; .[]) | "   - \(.rule): \(.count) occorrenze"' "$json_file" 2>/dev/null
+}
+
+displayPMDSummary(){
+    local json_file="$1"
+    
+    if ! command -v jq >/dev/null 2>&1; then
+        return 0
+    fi
+    
+    echo ""
+    echo "📈 Riepilogo violazioni PMD:"
+    
+    local total=$(jq '.processingErrors + .suppressedViolations + (.files[].violations | length)' "$json_file" 2>/dev/null | awk '{s+=$1} END {print s}')
+    
+    echo "   Totale violazioni: ${total:-0}"
+    
+    # Violazioni per priorità
+    if [ -f "$json_file" ]; then
+        echo ""
+        echo "   Per priorità:"
+        jq -r '.files[].violations[] | .priority' "$json_file" 2>/dev/null | sort | uniq -c | while read count priority; do
+            echo "   - Priority $priority: $count violazioni"
+        done
+    fi
 }
 
 export LANG=en_us_8859_1
