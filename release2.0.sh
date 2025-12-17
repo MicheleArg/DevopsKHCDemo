@@ -378,7 +378,9 @@ validate(){
 
                 printf "Salesforce coverage (deploy): %.2f%%\n" "$coverage"
 
-                if (( $(echo "$coverage < 80" | bc -l) )); then
+                local THRESHOLD=$(jq -r '.["testCoverageThreshold"] // empty' "$config_file")
+
+                if (( $(echo "$coverage < $THRESHOLD" | bc -l) )); then
                     echo "❌ Coverage Salesforce sotto soglia ($coverage%)"
                     exit 1
                 else

@@ -9,5 +9,6 @@
  },
  "Release" : "R2",
  "main" : "PROD",
- "UAT" : "UAT" 
+ "UAT" : "UAT",
+ "testCoverageThreshold" : 75
 }
