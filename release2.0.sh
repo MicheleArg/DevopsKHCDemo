@@ -46,7 +46,7 @@ createTag(){
     # Estrai solo il tagName dal config
     local tag_prefix
     if command -v jq >/dev/null 2>&1; then
-        tag_prefix=$(jq -r '.tagName // empty' "$config_file")
+        tag_prefix=$(jq -r --arg env "$envTarget" '.[$env].tagName // empty' "$config_file")
     else
         tag_prefix=$(grep -oP '"tagName"\s*:\s*"\K[^"]+' "$config_file")
     fi
