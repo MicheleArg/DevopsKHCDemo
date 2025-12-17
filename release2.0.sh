@@ -406,14 +406,14 @@ createReleasePackage(){
         echo "✅ Conversione completata"
     
         # Se esiste la cartella profiles in default, sostituiscila in codepkg
-        if [ -d "$basePath""default/profiles" ]; then
+        if [ -d "$basePath""force-app/main/default/profiles" ]; then
             echo "📁 Trovata cartella profiles in default"
             
             # Rimuovi la cartella profiles generata in codepkg
             rm -rf "$basePath""codepkg/profiles"
             
             # Copia la cartella profiles da default a codepkg
-            cp -r "$basePath""default/profiles" "$basePath""codepkg/"
+            cp -r "$basePath""force-app/main/default/profiles" "$basePath""codepkg/"
             
             echo "✅ Cartella profiles sostituita in codepkg"
         else
