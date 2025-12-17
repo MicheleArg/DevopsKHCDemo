@@ -71,28 +71,118 @@ createTag(){
 }
 
 deploySFDC(){
-
-    if [ $testToRun == 'true' ]; then
-        # Definisci la lista di test
+    local config_file="DevOpsConfig/config.json"
+    
+    echo "🔐 Caricamento configurazioni..."
+    
+    # Verifica esistenza file config
+    if [ ! -f "$config_file" ]; then
+        echo "❌ File di configurazione non trovato: $config_file"
+        return 1
+    fi
+    
+    # Estrai configurazioni dal JSON
+    local client_id username server_key instance_url
+    
+    if command -v jq >/dev/null 2>&1; then
+        client_id=$(jq -r --arg env "$envTarget" '.[$env].clientId // empty' "$config_file")
+        username=$(jq -r --arg env "$envTarget" '.[$env].username // empty' "$config_file")
+        server_key=$(jq -r --arg env "$envTarget" '.[$env].serverKey // empty' "$config_file")
+        instance_url=$(jq -r --arg env "$envTarget" '.[$env].instanceUrl // empty' "$config_file")
+    else
+        client_id=$(grep -oP '"(clientId|client_id)"\s*:\s*"\K[^"]+' "$config_file" | head -1)
+        username=$(grep -oP '"username"\s*:\s*"\K[^"]+' "$config_file")
+        server_key=$(grep -oP '"(serverKey|server_key)"\s*:\s*"\K[^"]+' "$config_file" | head -1)
+        instance_url=$(grep -oP '"(instanceUrl|instance_url)"\s*:\s*"\K[^"]+' "$config_file" | head -1)
+        instance_url=${instance_url:-"https://login.salesforce.com"}
+    fi
+    
+    # Validazione parametri
+    if [ -z "$client_id" ] || [ -z "$username" ] || [ -z "$server_key" ]; then
+        echo "❌ Parametri mancanti nel file di configurazione"
+        echo "   - clientId: ${client_id:-(mancante)}"
+        echo "   - username: ${username:-(mancante)}"
+        echo "   - serverKey: ${server_key:-(mancante)}"
+        return 1
+    fi
+    
+    # Verifica esistenza server.key
+    if [ ! -f "$server_key" ]; then
+        echo "❌ File server key non trovato: $server_key"
+        return 1
+    fi
+    
+    echo "✅ Configurazioni caricate"
+    echo "   - Target Org: $envTarget"
+    echo "   - Username: $username"
+    echo "   - Instance: $instance_url"
+    
+    # Login a Salesforce
+    echo ""
+    echo "🔑 Autenticazione Salesforce..."
+    if ! sf org login jwt \
+        --client-id "$client_id" \
+        --jwt-key-file "$server_key" \
+        --username "$username" \
+        --alias "$envTarget" \
+        --instance-url "$instance_url"; then
+        echo "❌ Errore durante l'autenticazione"
+        return 1
+    fi
+    
+    echo "✅ Autenticazione completata"
+    
+    # Deployment
+    local package_xml="./Release/codepkg/package.xml"
+    
+    if [ ! -f "$package_xml" ]; then
+        echo "❌ Package.xml non trovato: $package_xml"
+        return 1
+    fi
+    
+    echo ""
+    echo "📦 Avvio validazione package..."
+    
+    if [ "$testToRun" == 'true' ]; then
+        # Con test specificati
+        test_list=""
         createTestList
-        echo $test_list
-        # cretaDeployScript $test_list $envTarget 'RunSpecifiedTests' 'false'
-        # Esegui Ant passando la lista di test come proprietà
-        #chmod +x ./ScriptRelease/aria-apache-ant/bin/ant
-        #echo $scriptName
-        sf org login jwt --client-id 3MVG9vvlaB0y1YsJFwEzDjnlhVijrQ82goK4CErH6Z_ZrfsGinqjOiUvkwBJbyCQstSwwmgmHg36oSfqh70HG --jwt-key-file ./server.key --username michele11.argentino@mydev2.com --alias $envTarget --instance-url https://login.salesforce.com
-        if sf project deploy start --manifest ./Release/codepkg/package.xml --test-level RunSpecifiedTests --tests $test_list --target-org $envTarget; then :
-        else 
-            exit 1
-        fi
-    else        
-        sf org login jwt --client-id 3MVG9vvlaB0y1YsJFwEzDjnlhVijrQ82goK4CErH6Z_ZrfsGinqjOiUvkwBJbyCQstSwwmgmHg36oSfqh70HG --jwt-key-file ./server.key --username michele11.argentino@mydev2.com --alias $envTarget --instance-url https://login.salesforce.com
-        if sf project deploy start --manifest ./Release/codepkg/package.xml --test-level NoTestRun --target-org $envTarget; then :
-        else 
-            exit 1
+        
+        if [ -z "$test_list" ]; then
+            echo "⚠️  Nessun test trovato, eseguo senza test"
+            testToRun='false'
+        else
+            echo "🧪 Test da eseguire: $test_list"
+            
+            if sf project deploy start \
+                --source-dir "./Release/force-app/main/default" \
+                --test-level RunSpecifiedTests \
+                --tests "$test_list" \
+                --target-org "$envTarget"; then
+                echo "✅ Deployment completato con successo"
+                return 0
+            else
+                echo "❌ Deployment fallito"
+                return 1
+            fi
         fi
     fi
-
+    
+    # Senza test
+    if [ "$testToRun" != 'true' ]; then
+        echo "⚠️  Deployment senza esecuzione test"
+        
+        if sf project deploy start \
+            --source-dir "./Release/force-app/main/default" \
+            --test-level NoTestRun \
+            --target-org "$envTarget"; then
+            echo "✅ Deployment completato con successo"
+            return 0
+        else
+            echo "❌ Deployment fallito"
+            return 1
+        fi
+    fi
     
 }
 
