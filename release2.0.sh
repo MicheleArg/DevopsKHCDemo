@@ -433,7 +433,7 @@ createTestList(){
         if [ -n "$default_test" ]; then
             echo "⚙️  Uso test di default dal catalogo: $default_test"
             echo "$default_test"
-            test_set["$default_test"]=1
+            test_list="$default_test"
         else
             echo "⚠️  Nessun test di default configurato"
         fi
@@ -465,7 +465,7 @@ createTestList(){
         if [ -n "$test_class" ]; then
             # Test specifico trovato
             echo "     ✓ Test specifico: $test_class"
-            test_list="$test_class"
+            test_set["$test_class"]=1
         else
             echo "     ⚠️  Nessun test configurato"
         fi
