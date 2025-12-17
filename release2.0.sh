@@ -25,6 +25,12 @@ deploy(){
 
     getLastTag
 
+    if ! createMergeBranch; then
+        echo "❌ Errore nella creazione del branch di merge"
+        cleanupMergeBranch
+        exit 1
+    fi
+
     getCommitsFromTag
 
     getDiffFiles
@@ -34,6 +40,9 @@ deploy(){
     createReleasePackage
 
     deploySFDC
+
+     # Pulizia branch temporaneo
+    cleanupMergeBranch
 
     createTag
 }
@@ -200,33 +209,11 @@ validateDeploy(){
 
     getLastTag
 
-    getCommitsFromTag
-
-    getDiffFiles
-
-    createDiffPackage
-
-    createReleasePackage
-
-    validate
-}
-
-pullRequestCreation(){
-    echo "Starting Pull Request Creation"
-    echo "Env target: $envTarget"
-    echo "Source branch: $sourceBranch"
-    echo "Destination branch: $destBranch"
-    echo "Test to run: $testToRun"
-
-    #scarico tutti i branch dal remoto
-    alignBranches
-
-    #controllo i branch
-    checkBranch $sourceBranch
-    checkBranch $destBranch
-
-    #prendo l'ultimo tag
-    getLastTag
+    if ! createMergeBranch; then
+        echo "❌ Errore nella creazione del branch di merge"
+        cleanupMergeBranch
+        exit 1
+    fi
 
     getCommitsFromTag
 
@@ -238,8 +225,10 @@ pullRequestCreation(){
 
     validate
 
-    createPR
+     # Pulizia branch temporaneo
+    cleanupMergeBranch
 }
+
 
 
 cretaDeployScript(){
@@ -876,71 +865,171 @@ checkBranch(){
 getLastTag(){
     local config_file="DevOpsConfig/config.json"
     
+    echo "🎯 Recupero ultimo tag dal branch di destinazione: $destBranch"
+    
     # Verifica esistenza file config
     if [ ! -f "$config_file" ]; then
         echo "❌ Errore: file $config_file non trovato"
         return 1
     fi
     
-    # Estrai tagName dal JSON (usando jq se disponibile, altrimenti grep/sed)
+    # Estrai tagName dal JSON
     local tag_prefix
     if command -v jq >/dev/null 2>&1; then
         tag_prefix=$(jq -r --arg env "$envTarget" '.[$env].tagName // empty' "$config_file")
     else
-        # Fallback senza jq - cerca dentro l'ambiente specifico
         tag_prefix=$(grep -A 10 "\"$envTarget\"" "$config_file" | grep -o '"tagName"[[:space:]]*:[[:space:]]*"[^"]*"' | sed 's/.*"tagName"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/' | head -1)
     fi
     
-    # Verifica che tagName sia stato trovato
     if [ -z "$tag_prefix" ] || [ "$tag_prefix" = "null" ]; then
         echo "❌ Errore: tagName non trovato in $config_file"
         return 1
     fi
     
-    echo "🔍 Cerco tag con prefisso: $tag_prefix"
+    echo "🔍 Cerco tag con prefisso: $tag_prefix sul branch $destBranch"
+    
+    # Salva il branch corrente per tornare dopo
+    local current_branch=$(git rev-parse --abbrev-ref HEAD)
+    echo "📍 Branch corrente salvato: $current_branch"
+    
+    # Checkout del branch di destinazione
+    echo "🔀 Checkout del branch destinazione: $destBranch"
+    if ! git checkout "$destBranch" 2>/dev/null; then
+        echo "❌ Errore nel checkout di $destBranch"
+        return 1
+    fi
+    
+    # Pull per aggiornare
+    git pull origin "$destBranch" --quiet
     
     # Fetch tags
     git fetch --tags --quiet
     
-    # Trova l'ultimo tag con il prefisso specificato
-    ultimo_tag=$(git tag -l "${tag_prefix}*" --sort=-version:refname | head -n 1)
+    # Trova l'ultimo tag con il prefisso specificato sul branch destinazione
+    ultimo_tag=$(git tag -l "${tag_prefix}*" --sort=-version:refname --merged "$destBranch" | head -n 1)
     
     if [ -z "$ultimo_tag" ]; then
-        echo "⚠️  Nessun tag trovato con prefisso '$tag_prefix'"
+        echo "⚠️  Nessun tag trovato con prefisso '$tag_prefix' sul branch $destBranch"
+        # Ritorna al branch originale
+        git checkout "$current_branch" 2>/dev/null
         return 1
     fi
     
-    echo "✅ Ultimo tag: $ultimo_tag"
-    echo "$ultimo_tag"  # Return del valore per usarlo in altre funzioni
+    echo "✅ Ultimo tag trovato: $ultimo_tag"
+    
+    # Ritorna al branch originale
+    git checkout "$current_branch" 2>/dev/null
+    
+    echo "$ultimo_tag"
+}
+
+createMergeBranch(){
+    echo ""
+    echo "================================================"
+    echo "🔨 Creazione branch temporaneo per merge"
+    echo "================================================"
+    
+    # Genera nome branch temporaneo
+    local timestamp=$(date +"%Y%m%d_%H%M%S")
+    TEMP_MERGE_BRANCH="temp_merge_${sourceBranch}_to_${destBranch}_${timestamp}"
+    
+    echo "📝 Nome branch temporaneo: $TEMP_MERGE_BRANCH"
+    
+    # Assicurati di essere aggiornato
+    git fetch --all --quiet
+    
+    # Checkout del branch di destinazione
+    echo "🔀 Checkout branch destinazione: $destBranch"
+    if ! git checkout "$destBranch" 2>/dev/null; then
+        echo "❌ Errore nel checkout di $destBranch"
+        return 1
+    fi
+    
+    # Pull per essere sicuri di avere l'ultima versione
+    echo "⬇️  Pull del branch destinazione..."
+    git pull origin "$destBranch" --quiet
+    
+    # Crea branch temporaneo dal branch destinazione
+    echo "🌿 Creazione branch temporaneo da $destBranch..."
+    if ! git checkout -b "$TEMP_MERGE_BRANCH"; then
+        echo "❌ Errore nella creazione del branch temporaneo"
+        return 1
+    fi
+    
+    echo "✅ Branch temporaneo creato: $TEMP_MERGE_BRANCH"
+    
+    # Merge del branch sorgente nel branch temporaneo
+    echo ""
+    echo "🔀 Merge di $sourceBranch in $TEMP_MERGE_BRANCH..."
+    
+    if git merge "origin/$sourceBranch" --no-edit --no-ff; then
+        echo "✅ Merge completato con successo"
+        
+        # Mostra statistiche del merge
+        echo ""
+        echo "📊 Statistiche merge:"
+        git diff --stat "$destBranch".."$TEMP_MERGE_BRANCH"
+        
+        return 0
+    else
+        echo "❌ Conflitti durante il merge!"
+        echo ""
+        echo "Conflitti rilevati in:"
+        git diff --name-only --diff-filter=U
+        
+        # Abort del merge
+        git merge --abort
+        
+        # Torna al branch originale e cancella il branch temporaneo
+        git checkout "$destBranch" 2>/dev/null
+        git branch -D "$TEMP_MERGE_BRANCH" 2>/dev/null
+        
+        return 1
+    fi
 }
 
 getCommitsFromTag(){
-    echo "🔍 Recupero ultimo tag..."
+    echo ""
+    echo "================================================"
+    echo "🔍 Recupero commit dal branch temporaneo"
+    echo "================================================"
     
-    # Ottiene l'ultimo tag dalla funzione precedente
+    # Verifica che il branch temporaneo sia stato creato
+    if [ -z "$TEMP_MERGE_BRANCH" ]; then
+        echo "❌ Errore: branch temporaneo non creato"
+        return 1
+    fi
+    
+    # Verifica di essere sul branch temporaneo
+    local current_branch=$(git rev-parse --abbrev-ref HEAD)
+    if [ "$current_branch" != "$TEMP_MERGE_BRANCH" ]; then
+        echo "🔀 Checkout del branch temporaneo: $TEMP_MERGE_BRANCH"
+        git checkout "$TEMP_MERGE_BRANCH"
+    fi
+    
+    echo "📋 Branch corrente: $TEMP_MERGE_BRANCH"
+    echo "🏷️  Ultimo tag: ${ultimo_tag:-"nessuno"}"
     
     if [ -z "$ultimo_tag" ]; then
         echo "⚠️  Nessun tag trovato - recupero tutte le commit"
         
-        # Ottiene tutte le commit del branch corrente
-        local commits=$(git log --no-merges --pretty=format:"%h - %s")
+        # Ottiene tutte le commit rispetto al branch destinazione
+        local commits=$(git log "$destBranch".."$TEMP_MERGE_BRANCH" --no-merges --pretty=format:"%h - %s")
         
         if [ -z "$commits" ]; then
-            echo "❌ Nessuna commit trovata nel repository"
+            echo "❌ Nessuna differenza trovata tra $destBranch e $TEMP_MERGE_BRANCH"
             return 1
         fi
         
-        # Salva tutte le commit
         echo "$commits" > commits.txt
-        
         local commit_count=$(echo "$commits" | wc -l)
-        echo "✅ $commit_count commit totali salvate in commits.txt"
+        echo "✅ $commit_count commit salvate in commits.txt"
         
     else
         echo "📋 Cerco commit dopo il tag: $ultimo_tag"
         
-        # Ottiene commit escludendo i merge
-        local commits=$(git log "$ultimo_tag..HEAD" --no-merges --pretty=format:"%h - %s")
+        # Ottiene commit dal tag fino al branch temporaneo
+        local commits=$(git log "$ultimo_tag".."$TEMP_MERGE_BRANCH" --no-merges --pretty=format:"%h - %s")
         
         if [ -z "$commits" ]; then
             echo "⚠️  Nessun commit trovato dopo il tag '$ultimo_tag'"
@@ -948,17 +1037,41 @@ getCommitsFromTag(){
             return 0
         fi
         
-        # Salva in commits.txt
         echo "$commits" > commits.txt
-        
         local commit_count=$(echo "$commits" | wc -l)
         echo "✅ $commit_count commit salvati in commits.txt (da $ultimo_tag)"
     fi
     
     # Mostra preview
     echo ""
-    echo "Preview primi 5 commit:"
+    echo "📄 Preview primi 5 commit:"
     head -5 commits.txt
+}
+
+cleanupMergeBranch(){
+    echo ""
+    echo "🧹 Pulizia branch temporaneo..."
+    
+    if [ -z "$TEMP_MERGE_BRANCH" ]; then
+        echo "ℹ️  Nessun branch temporaneo da pulire"
+        return 0
+    fi
+    
+    # Torna al branch destinazione
+    local current_branch=$(git rev-parse --abbrev-ref HEAD)
+    if [ "$current_branch" = "$TEMP_MERGE_BRANCH" ]; then
+        echo "🔀 Ritorno al branch: $destBranch"
+        git checkout "$destBranch" 2>/dev/null
+    fi
+    
+    # Cancella il branch temporaneo
+    if git show-ref --verify --quiet "refs/heads/$TEMP_MERGE_BRANCH"; then
+        echo "🗑️  Eliminazione branch temporaneo: $TEMP_MERGE_BRANCH"
+        git branch -D "$TEMP_MERGE_BRANCH" 2>/dev/null
+        echo "✅ Branch temporaneo eliminato"
+    fi
+    
+    TEMP_MERGE_BRANCH=""
 }
 
 export LANG=en_us_8859_1
