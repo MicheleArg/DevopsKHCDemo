@@ -276,7 +276,7 @@ validate(){
             echo "🧪 Test da eseguire: $test_list"
             
             if sf project deploy validate \
-                --source-dir "${basePath}force-app/main/default" \
+                --source-dir "./Release/force-app/main/default" \
                 --test-level RunSpecifiedTests \
                 --tests "$test_list" \
                 --target-org "$envTarget"; then
@@ -294,7 +294,7 @@ validate(){
         echo "⚠️  Validazione senza esecuzione test"
         
         if sf project deploy validate \
-            --source-dir "${basePath}force-app/main/default" \
+            --source-dir "./Release/force-app/main/default" \
             --test-level NoTestRun \
             --target-org "$envTarget"; then
             echo "✅ Validazione completata con successo"
