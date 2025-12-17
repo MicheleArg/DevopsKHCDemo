@@ -368,8 +368,8 @@ validate(){
                 echo "✅ Validazione completata con successo"
 
                 sf apex run test --tests "$test_list" --target-org "$envTarget" --result-format json --code-coverage --wait 10 >  "./Release/test-results.json"
-                coverage=$(jq '.result.coverage.summary.testRunCoverage' "./Release/test-results.json")
-                echo "Coverage: $coverage%"
+                coverage=$(jq -r '.result.coverage.summary.orgWideCoverage' deploy-results.json | tr -d '%')
+                echo "Coverage: $coverage"
                 if (( $(echo "$coverage < 80" | bc -l) )); then
                     echo "❌ Coverage sotto 80%!"
                     return 1
