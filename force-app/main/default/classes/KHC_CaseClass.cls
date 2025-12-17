@@ -7,30 +7,15 @@
 **/
 public with sharing class KHC_CaseClass {
     public KHC_CaseClass() {
-        Integer x=0;
+        Integer x=1;
         if(x==1){
-            x=2;
-            System.debug(1);
             if(x==1){
-                x=2;
-                System.debug(1);
                  if(x==1){
-                    x=2;
-                    System.debug(1);
                      if(x==1){
                         x=2;
                         System.debug(1);
-                    }else{
-                        x=3;
-                        System.debug(2);
                     }
-                }else{
-                    x=3;
-                    System.debug(2);
                 }
-            }else{
-                x=3;
-                System.debug(2);
             }
         }else{
             x=3;
