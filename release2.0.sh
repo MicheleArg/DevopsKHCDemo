@@ -964,7 +964,7 @@ getCommitsFromTag(){
 export LANG=en_us_8859_1
 
 actionType=$1
-envTarget=$(jq -r --arg env "$3" '.[$env] // empty' "$config_file")
+envTarget=$(jq -r --arg env "$3" '.[$env] // empty' "DevOpsConfig/config.json")
 sourceBranch=$2
 destBranch=$3
 testToRun=$4
