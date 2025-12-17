@@ -21,7 +21,7 @@ jobs:
            npm install -g @salesforce/cli
            sf --version
           
-       - name: script
+       - name: Validation
          run: |
            echo "Esecuzione script per PR #${{ github.event.pull_request.number }}"
            echo "Source: ${{ github.head_ref }} -> Destination: ${{ github.base_ref }}"
@@ -30,7 +30,7 @@ jobs:
            chmod +x ./release2.0.sh
            ./release2.0.sh validate ${{ github.head_ref }} ${{ github.base_ref }} true
 
-       - name: Upload all output
+       - name: Upload artifact
          if: always()
          uses: actions/upload-artifact@v4
          with:
