@@ -7,8 +7,25 @@
     "tagName" : "PROD_",
     "instanceUrl" : "https://login.salesforce.com"
  },
+ "UAT":{
+ 	"clientId" : "3MVG9dAEux2v1sLvpTRAM8ITryX9L7QTRv4kU75tFMNq1S5fvc0mOwqfqT._VNWXfk5o_yoqCq4K_sXm0.Afd",
+	"username" : "michele11.argentino931@agentforce.com",
+	"url" : "https://login.salesforce.com",
+	"serverKey" : "./DevOpsConfig/PROD/server.key",
+    "tagName" : "UAT_",
+    "instanceUrl" : "https://login.salesforce.com"
+ },
+ "SIT":{
+ 	"clientId" : "3MVG9dAEux2v1sLvpTRAM8ITryX9L7QTRv4kU75tFMNq1S5fvc0mOwqfqT._VNWXfk5o_yoqCq4K_sXm0.Afd",
+	"username" : "michele11.argentino931@agentforce.com",
+	"url" : "https://login.salesforce.com",
+	"serverKey" : "./DevOpsConfig/PROD/server.key",
+    "tagName" : "SIT_",
+    "instanceUrl" : "https://login.salesforce.com"
+ },
  "Release" : "R2",
  "main" : "PROD",
  "UAT" : "UAT",
+ "SIT" : "SIT",
  "testCoverageThreshold" : 75
 }
