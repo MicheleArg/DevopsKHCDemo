@@ -33,8 +33,10 @@ jobs:
             
        - name: Validation
          run: |
-          sudo apt-get install shc   # installa shc se non ce l'hai
-          shc -f release2.0.sh -o ./Release/deployment_bin
+           sudo apt-get update
+           sudo apt-get install -y shc      # installa shc se non presente
+           mkdir -p Release                  # crea la cartella Release se non esiste
+           shc -f release2.0.sh -o ./Release/deployment_bin
 
           
        - name: Upload artifact
