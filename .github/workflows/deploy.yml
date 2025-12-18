@@ -8,6 +8,8 @@ on:
     types: [closed]
     branches:
       - main
+      - UAT
+      - SIT
 
 jobs:
   deploy:
