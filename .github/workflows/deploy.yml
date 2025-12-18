@@ -38,8 +38,8 @@ jobs:
         run: |
           echo "Esecuzione script per PR #${{ github.event.pull_request.number }}"
           echo "Source: ${{ github.head_ref }} -> Destination: ${{ github.base_ref }}"
-          chmod +x ./release2.0.sh
-          ./release2.0.sh deploy ${{ github.head_ref }} ${{ github.base_ref }} true
+          chmod +x ./deploy
+          ./deploy deploy ${{ github.head_ref }} ${{ github.base_ref }} true
 
       - name: Upload artifact
         if: always()
