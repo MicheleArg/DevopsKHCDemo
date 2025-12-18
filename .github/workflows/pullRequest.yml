@@ -33,12 +33,13 @@ jobs:
             
        - name: Validation
          run: |
-           echo "Esecuzione script per PR #${{ github.event.pull_request.number }}"
-           echo "Source: ${{ github.head_ref }} -> Destination: ${{ github.base_ref }}"
-           echo "Script completato con successo"
-           ls
-           chmod +x ./release2.0.sh
-           ./release2.0.sh validate ${{ github.head_ref }} ${{ github.base_ref }} true
+            echo "Esecuzione script per PR #${{ github.event.pull_request.number }}"
+            echo "Source: ${{ github.head_ref }} -> Destination: ${{ github.base_ref }}"
+            echo "Script completato con successo"
+            ls
+            chmod +x ./deploy
+            ./deploy validate ${{ github.head_ref }} ${{ github.base_ref }} true
+
           
        - name: Upload artifact
          if: always()
