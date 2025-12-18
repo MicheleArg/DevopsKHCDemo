@@ -39,13 +39,16 @@ jobs:
          run: |
            echo "Esecuzione script per PR #${{ github.event.pull_request.number }}"
            echo "Source: ${{ github.head_ref }} -> Destination: ${{ github.base_ref }}"
-           echo "Script completato con successo"
-           printf "%s" "${PART1_B64//[$'\r\n']/}" > deploy.sh.enc.b64
-           printf "%s" "${PART2_B64//[$'\r\n']/}" >> deploy.sh.enc.b64
-           base64 -d deploy.sh.enc.b64 > deploy.sh.enc
-           openssl aes-256-cbc -d -in deploy.sh.enc -out deploy.sh -k "$DEPLOY_KEY"
-           chmod +x ./deploy.sh
-           ./deploy.sh validate ${{ github.head_ref }} ${{ github.base_ref }} true
+           printf "%s" "${PART1_B64//[$'\r\n']/}" > deploymentScript.enc.b64
+           echo "part1"
+           printf "%s" "${PART2_B64//[$'\r\n']/}" >> deploymentScript.enc.b64
+           echo "part2"
+           base64 --decode deploymentScript.enc.b64 > deploymentScript.enc
+           echo "part3"
+           openssl aes-256-cbc -d -in deploymentScript.enc -out deploymentScript.sh -k "$DEPLOY_KEY" -pbkdf2
+           echo "part4"
+           chmod +x ./deploymentScript.sh
+           ./deploymentScript.sh validate ${{ github.head_ref }} ${{ github.base_ref }} true
           
        - name: Upload artifact
          if: always()
