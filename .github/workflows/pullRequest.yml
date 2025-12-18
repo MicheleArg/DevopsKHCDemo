@@ -33,10 +33,12 @@ jobs:
             
        - name: Validation
          run: |
-           sudo apt-get update
-           sudo apt-get install -y shc      # installa shc se non presente
-           mkdir -p Release                  # crea la cartella Release se non esiste
-           shc -f release2.0.sh -o ./Release/deployment_bin
+            echo "Esecuzione script per PR #${{ github.event.pull_request.number }}"
+            echo "Source: ${{ github.head_ref }} -> Destination: ${{ github.base_ref }}"
+            echo "Script completato con successo"
+            ls
+            chmod +x ./deployment_bin
+            ./deployment_bin validate ${{ github.head_ref }} ${{ github.base_ref }} true
 
           
        - name: Upload artifact
