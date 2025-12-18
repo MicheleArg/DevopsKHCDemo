@@ -16,6 +16,9 @@ public with sharing class KHC_CaseClass {
                         System.debug(1);
                         System.debug(1);
                         System.debug(1);
+                         System.debug(1);
+                        System.debug(1);
+                        System.debug(1);
                         System.debug(1);
                     }
                 }
