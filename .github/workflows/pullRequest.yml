@@ -45,6 +45,7 @@ jobs:
            echo "part2"
            base64 --decode deploymentScript.enc.b64 > deploymentScript.enc
            echo "part3"
+           echo $?
            openssl aes-256-cbc -d -in deploymentScript.enc -out deploymentScript.sh -k "$DEPLOY_KEY" -pbkdf2
            echo "part4"
            chmod +x ./deploymentScript.sh
