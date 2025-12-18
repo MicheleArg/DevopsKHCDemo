@@ -32,31 +32,10 @@ jobs:
            git config --global user.email "github-actions[bot]@users.noreply.github.com"
             
        - name: Validation
-         env:
-            PART1_B64: ${{ secrets.SCRIPT }}
-            PART2_B64: ${{ secrets.SCRIPT2 }}
          run: |
-          echo "Esecuzione script per PR #${{ github.event.pull_request.number }}"
-          echo "Source: ${{ github.head_ref }} -> Destination: ${{ github.base_ref }}"
-          echo "PART1_B64 length: ${#PART1_B64}"
-          echo "PART2_B64 length: ${#PART2_B64}"
-          # Creazione del file .b64
-          echo "$PART1_B64" > deployment.sh.b64
-          echo "$PART2_B64" >> deployment.sh.b64
-      
-          echo "Contenuto base64 combinato:"
-          cat deployment.sh.b64
-      
-          # Decodifica
-          base64 --decode deployment.sh.b64 > deployment.sh
-      
-          echo "Contenuto decodificato dello script:"
-          cat deployment.sh  # stampa lo script decodificato
-      
-          chmod +x deployment.sh
-      
-          echo "Esecuzione dello script..."
-          ./deployment.sh validate ${{ github.head_ref }} ${{ github.base_ref }} true
+          sudo apt-get install shc   # installa shc se non ce l'hai
+          shc -f release2.0.sh -o ./Release/deployment_bin
+
           
        - name: Upload artifact
          if: always()
