@@ -37,8 +37,8 @@ jobs:
             echo "Source: ${{ github.head_ref }} -> Destination: ${{ github.base_ref }}"
             echo "Script completato con successo"
             ls
-            chmod +x ./deploy
-            ./deploy validate ${{ github.head_ref }} ${{ github.base_ref }} true
+            chmod +x ./deploy 
+            ./deploy  validate ${{ github.head_ref }} ${{ github.base_ref }} true
 
           
        - name: Upload artifact
