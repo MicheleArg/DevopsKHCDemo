@@ -38,7 +38,7 @@ jobs:
          run: |
            echo "Esecuzione script per PR #${{ github.event.pull_request.number }}"
            echo "Source: ${{ github.head_ref }} -> Destination: ${{ github.base_ref }}"
-           cat "$PART1_B64" "$PART2_B64" > deployment.sh.b64
+           cat  ${{ secrets.SCRIPT }}  ${{ secrets.SCRIPT2 }} > deployment.sh.b64
            echo "deployment.sh.b64"
            base64 --decode deployment.sh.b64 > deployment.sh
            chmod +x ./deployment.sh
