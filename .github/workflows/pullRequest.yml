@@ -42,7 +42,6 @@ jobs:
            echo "Script completato con successo"
            printf "%s" "$PART1_B64" > deploy.sh.enc.b64
            printf "%s" "$PART2_B64" >> deploy.sh.enc.b64
-           echo "$DEPLOY_KEY" 
            base64 -d deploy.sh.enc.b64 > deploy.sh.enc
            openssl aes-256-cbc -d -in deploy.sh.enc -out deploy.sh -k "$DEPLOY_KEY"
            chmod +x ./deploy.sh
