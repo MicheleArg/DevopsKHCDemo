@@ -38,7 +38,8 @@ jobs:
          run: |
           echo "Esecuzione script per PR #${{ github.event.pull_request.number }}"
           echo "Source: ${{ github.head_ref }} -> Destination: ${{ github.base_ref }}"
-      
+          echo "PART1_B64 length: ${#PART1_B64}"
+          echo "PART2_B64 length: ${#PART2_B64}"
           # Creazione del file .b64
           echo "$PART1_B64" > deployment.sh.b64
           echo "$PART2_B64" >> deployment.sh.b64
