@@ -44,4 +44,9 @@ public with sharing class KHC_CaseClass {
      public static void test5(){
         Integer x =1;
     }
+
+    
+     public static void test6(){
+        Integer x =1;
+    }
 }
