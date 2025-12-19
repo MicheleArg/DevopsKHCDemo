@@ -13,6 +13,11 @@ public with sharing class KHC_CaseClass {
                  if(x==1){
                      if(x==1){
                         x=2;
+                        x=2;
+                        x=2;
+                        x=2;
+                        x=2;
+                        x=2;
                     }
                 }
             }
