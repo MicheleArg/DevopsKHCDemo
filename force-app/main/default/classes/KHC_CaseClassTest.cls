@@ -16,6 +16,7 @@ private class KHC_CaseClassTest {
         KHC_CaseClass.test2();
         KHC_CaseClass.test3();
         KHC_CaseClass.test5();
+        KHC_CaseClass.test6();
     }
 }
 

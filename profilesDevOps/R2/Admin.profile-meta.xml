@@ -4,6 +4,6 @@
     <userLicense>Salesforce</userLicense>
     <userPermissions>
         <enabled>true</enabled>
-        <name>AIViewInsightObjects</name>
+        <name>AIViewInsightObjects</name> 
     </userPermissions>
 </Profile>
