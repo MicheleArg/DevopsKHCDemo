@@ -2,7 +2,7 @@
  * @description       : 
  * @author            : michele11.argentino@nttdata.com
  * @group             : 
- * @last modified on  : 12-17-2025
+ * @last modified on  : 12-19-2025
  * @last modified by  : michele11.argentino@nttdata.com
 **/
 
@@ -15,6 +15,7 @@ private class KHC_CaseClassTest {
         KHC_CaseClass.test1();
         KHC_CaseClass.test2();
         KHC_CaseClass.test3();
+        KHC_CaseClass.test5();
     }
 }
 
