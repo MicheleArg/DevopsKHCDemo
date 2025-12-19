@@ -14,6 +14,7 @@ public with sharing class KHC_CaseClass {
                      if(x==1){
                         x=2;
                         x=2;
+                    }
                 }
             }
         }else{
@@ -37,6 +38,11 @@ public with sharing class KHC_CaseClass {
     }
 
      public static void test5(){
+        Integer x =1;
+    }
+
+    
+     public static void test6(){
         Integer x =1;
     }
 }
