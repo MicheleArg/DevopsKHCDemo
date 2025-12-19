@@ -1,3 +1,10 @@
+<!--
+  @description       : 
+  @author            : michele11.argentino@nttdata.com
+  @group             : 
+  @last modified on  : 12-19-2025
+  @last modified by  : michele11.argentino@nttdata.com
+-->
 <aura:component>
-
+    <p> hello world US2</p>
 </aura:component>
