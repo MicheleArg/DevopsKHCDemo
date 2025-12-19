@@ -27,5 +27,5 @@
  "main" : "PROD",
  "UAT" : "QA",
  "SIT" : "Test",
- "testCoverageThreshold" : 75
+ "testCoverageThreshold" : 90
 }
