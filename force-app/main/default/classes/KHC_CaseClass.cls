@@ -2,7 +2,7 @@
  * @description       : 
  * @author            : michele11.argentino@nttdata.com
  * @group             : 
- * @last modified on  : 12-18-2025
+ * @last modified on  : 12-19-2025
  * @last modified by  : michele11.argentino@nttdata.com
 **/
 public with sharing class KHC_CaseClass {
@@ -33,6 +33,10 @@ public with sharing class KHC_CaseClass {
         Integer x =1;
     }
     public static void test4(){
+        Integer x =1;
+    }
+
+     public static void test5(){
         Integer x =1;
     }
 }
