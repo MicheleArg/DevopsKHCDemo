@@ -6,6 +6,16 @@ permissions:
 on:
   pull_request:
     types: [opened, reopened, synchronize]
+  workflow_dispatch:
+    inputs:
+      target_env:
+        description: 'Target Environment'
+        required: true
+        type: choice
+        options:
+          - SIT
+          - UAT
+          - PROD
 
 jobs:
   validate:
