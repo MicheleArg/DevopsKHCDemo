@@ -2,7 +2,7 @@ name: Run Script on PR
 
 permissions:
   contents: write
-
+  
 on:
   pull_request:
     types: [opened, reopened, synchronize]
