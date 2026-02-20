@@ -1,0 +1,23 @@
+name: Sync Jira with PR
+on:
+ pull_request:
+   types: [opened, reopened]
+jobs:
+ update-jira:
+   runs-on: ubuntu-latest
+   steps:
+     - name: Transition Jira Ticket
+       env:
+         JIRA_BASE_URL: https://mic-argentino.atlassian.net/
+         JIRA_EMAIL: demokhc-wvsq34pwis@serviceaccount.atlassian.com
+         JIRA_API_TOKEN: ATSTT3xFfGF0QaCe-EYKGRCK8kiwnUiJnUXzljwHqBMdqhK85MZmPPqxYShjA5tNp7HmuugsVHh5P4ksvFjpd1slFHkbv3Gws0NUvfK_rHPN93ebw7go2x83ftLhwGw6xoGxk8yNzDdaK3rvjJjlu3DTtsKUqq07ome1KidxlmzUZPVPtXEOTFA=D4D31BB1
+       run: |
+         ISSUE_KEY=$(echo "${{ github.event.pull_request.title }}" | grep -oE '[A-Z]+-[0-9]+')
+         if [[ -n "$ISSUE_KEY" ]]; then
+           STATUS_ID="SIT" # Example: "31" for 'In Review'
+           curl -X POST \
+             --url "$JIRA_BASE_URL/rest/api/3/issue/$ISSUE_KEY/transitions" \
+             --user "$JIRA_EMAIL:$JIRA_API_TOKEN" \
+             --header 'Content-Type: application/json' \
+             --data "{\"transition\":{\"id\":\"$STATUS_ID\"}}"
+         fi
