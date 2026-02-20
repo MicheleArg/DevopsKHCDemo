@@ -15,7 +15,7 @@ jobs:
          ISSUE_KEY=$(echo "${{ github.event.pull_request.title }}" | grep -oE '[A-Z]+-[0-9]+')
          if [[ -n "$ISSUE_KEY" ]]; then
            STATUS_ID="SIT" # Example: "31" for 'In Review'
-           curl -X POST \
+           curl -X GET \
              --url "$JIRA_BASE_URL/rest/api/3/issue/$ISSUE_KEY/transitions" \
              --user "$JIRA_EMAIL:$JIRA_API_TOKEN" \
              --header 'Content-Type: application/json' 
