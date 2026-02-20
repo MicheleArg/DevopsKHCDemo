@@ -9,8 +9,8 @@ jobs:
      - name: Transition Jira Ticket
        env:
          JIRA_BASE_URL: https://mic-argentino.atlassian.net/
-         JIRA_EMAIL: demokhc-wvsq34pwis@serviceaccount.atlassian.com
-         JIRA_API_TOKEN: ATSTT3xFfGF0QaCe-EYKGRCK8kiwnUiJnUXzljwHqBMdqhK85MZmPPqxYShjA5tNp7HmuugsVHh5P4ksvFjpd1slFHkbv3Gws0NUvfK_rHPN93ebw7go2x83ftLhwGw6xoGxk8yNzDdaK3rvjJjlu3DTtsKUqq07ome1KidxlmzUZPVPtXEOTFA=D4D31BB1
+         JIRA_EMAIL: mic.argentino@gmail.com
+         JIRA_API_TOKEN: ATATT3xFfGF0NkVliDjDgTkD1DbC_o3HpU9AsEvltebB8nD9XrFUvN-wRX93Y5hrIu6MaraV3xCdiFearYqKn0TYLr3DB6kip5cqoPHQ-q4xDjUgQVleDIWicR_lbv2sZZIg62wdAlF50MlcDBwKEupEz9QXN0j5xX3zfU_y5iGxjbl1rPdODfc=C0BC6AF9
        run: |
          ISSUE_KEY=$(echo "${{ github.event.pull_request.title }}" | grep -oE '[A-Z]+-[0-9]+')
          if [[ -n "$ISSUE_KEY" ]]; then
