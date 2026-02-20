@@ -12,11 +12,11 @@ jobs:
          JIRA_EMAIL: mic.argentino@gmail.com
          JIRA_API_TOKEN: ATATT3xFfGF0NkVliDjDgTkD1DbC_o3HpU9AsEvltebB8nD9XrFUvN-wRX93Y5hrIu6MaraV3xCdiFearYqKn0TYLr3DB6kip5cqoPHQ-q4xDjUgQVleDIWicR_lbv2sZZIg62wdAlF50MlcDBwKEupEz9QXN0j5xX3zfU_y5iGxjbl1rPdODfc=C0BC6AF9
        run: |
-         ISSUE_KEY=$(echo "${{ github.event.pull_request.title }}" | grep -oE '[A-Z]+-[0-9]+')
+         ISSUE_KEY="KAN-1"
          if [[ -n "$ISSUE_KEY" ]]; then
            STATUS_ID="SIT" # Example: "31" for 'In Review'
            curl -X GET \
-             --url "$JIRA_BASE_URL/rest/api/3/issue/$ISSUE_KEY/transitions" \
+             --url "$JIRA_BASE_URL/rest/api/3/issue/KAN-1/transitions" \
              --user "$JIRA_EMAIL:$JIRA_API_TOKEN" \
              --header 'Content-Type: application/json' 
          fi
