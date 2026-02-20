@@ -18,6 +18,5 @@ jobs:
            curl -X POST \
              --url "$JIRA_BASE_URL/rest/api/3/issue/$ISSUE_KEY/transitions" \
              --user "$JIRA_EMAIL:$JIRA_API_TOKEN" \
-             --header 'Content-Type: application/json' \
-             --data "{\"transition\":{\"id\":\"$STATUS_ID\"}}"
+             --header 'Content-Type: application/json' 
          fi
