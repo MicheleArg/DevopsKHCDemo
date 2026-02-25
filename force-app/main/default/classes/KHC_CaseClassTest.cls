@@ -7,7 +7,7 @@
 **/
 
 @isTest
-private class KHC_CaseClassTest {
+private class KHC_CaseClassTest { 
 
     @isTest
     static void myUnitTest() {
