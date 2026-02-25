@@ -5,7 +5,7 @@ permissions:
 
 on:
   pull_request:
-    types: 
+    types: [reopened]
 
 jobs:
   validate:
