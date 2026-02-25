@@ -15,7 +15,7 @@ public with sharing class KHC_CaseClass {
                         x=2;
                         x=2;
                     }
-                }
+                }     
             }
         }else{
             x=3;
