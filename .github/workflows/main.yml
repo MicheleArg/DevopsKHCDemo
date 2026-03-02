@@ -25,7 +25,7 @@ jobs:
         env:
           JIRA_BASE_URL: "https://mic-argentino.atlassian.net"
           JIRA_EMAIL: "mic.argentino@gmail.com"
-          JIRA_API_TOKEN: "ATATT3xFfGF0jTKws6HmP8nK3NhJwTTp77AwppO9KtIiy-OGvEgtunectThY9TnL9a7PtrA5NQie-xHrEY19dHzC8YFM-fllKtATPLGWJhhfSPUwIh6yCgP9vofdIOsCewXwLiXAEEFlb-D9zMizfpdPaHn2rtNkog-euKy0qWicNG7yfbUYOSg=F9D30E90"
+          JIRA_API_TOKEN: "ATATT3xFfGF0z_R0a39a_CsrYjknAPPaxGPbtw3kgrCv9nZhdvEJqpGkyu-bdEHtSVXD_DPLok0qbikCNdeI-Balty2FbixKlT7Is-UMSXYtJHGosskaWAuiAtqVTxfldma8Ujp0sdH_xqTodTxtDIzFzL4B72fwd4XUITzxnH2lRHabMoct_KU=E832AE66"
           JIRA_CUSTOMFIELD_ID: "customfield_10104"
           ISSUE_KEY: ${{ steps.extract.outputs.issue }}
         run: |
