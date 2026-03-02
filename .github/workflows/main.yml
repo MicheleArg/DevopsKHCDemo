@@ -18,7 +18,7 @@ jobs:
         with:
           script: |
             const title = context.payload.pull_request.title || "";
-            core.setOutput("issue", m[0]);
+            core.setOutput("issue", title);
           
       - name: Update Jira field to "validated"
         if: ${{ always() && steps.extract.outputs.issue }}
