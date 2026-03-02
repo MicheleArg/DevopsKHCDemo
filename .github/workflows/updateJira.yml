@@ -1,0 +1,39 @@
+name: Update Jira from PR (minimal)
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+env:
+  # regex semplice per estrarre ISSUE-123
+  ISSUE_REGEX: '([A-Z]+-[0-9]+)'
+
+jobs:
+  update-jira:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Extract issue key from PR title/body
+        id: extract
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = context.payload.pull_request.title || "";
+            core.setOutput("issue", m[0]);
+          
+      - name: Update Jira field to "validated"
+        if: ${{ always() && steps.extract.outputs.issue }}
+        env:
+          JIRA_BASE_URL: "https://mic-argentino.atlassian.net/"
+          JIRA_EMAIL: "mic.argentino@gmail.com"
+          JIRA_API_TOKEN: "ATATT3xFfGF0dS43myrpHsHQSE8ex2248rZ-7D-nWZN0T110OI5cFUlD-WT-fOOsicmCUs-GqNwMkCuIv-vik-r5dQHoIHB3kciPbSGiFi6TKX_dbYv5GSfol7k_bED60TioimoTN8P712g0QK7Ns7HvBTxbhB0WyaF1AH8hHQujqDWlc-fCfdA=9838177A"
+          JIRA_CUSTOMFIELD_ID: "customfield_10104"
+          ISSUE_KEY: ${{ steps.extract.outputs.issue }}
+        run: |
+          echo "Updating Jira $ISSUE_KEY -> setting ${JIRA_CUSTOMFIELD_ID}=validated"
+          PAYLOAD="{ \"fields\": { \"${JIRA_CUSTOMFIELD_ID}\": \"validated\" } }"
+          curl -s -X PUT -H "Content-Type: application/json" \
+            -u "${JIRA_EMAIL}:${JIRA_API_TOKEN}" \
+            "${JIRA_BASE_URL}/rest/api/3/issue/${ISSUE_KEY}" \
+            --data "$PAYLOAD" \
+            -o /tmp/jira_resp.txt
+          cat /tmp/jira_resp.txt || true
