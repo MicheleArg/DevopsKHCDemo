@@ -1,4 +1,3 @@
-name: Run Script on PR
 
 permissions:
   contents: write
